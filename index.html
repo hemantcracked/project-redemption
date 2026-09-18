@@ -34,10 +34,6 @@
       <input type="date" id="examDate" required>
       <button type="submit">add exam</button>
     </form>
-    <div class="meta">
-      Countdown updates automatically as days pass. Nothing here can be deleted -
-      tick the box once an exam is done/passed and it strikes through instead.
-    </div>
   </div>
 
   <!-- ================= DAILY SCHEDULE ================= -->
@@ -55,10 +51,7 @@
 
   <!-- ================= DISTRACTIONS / NOISE ================= -->
   <div class="panel">
-    <div class="panel-title">Distractions &amp; Noise</div>
-    <div class="meta" style="margin-bottom:8px;">
-      Name what actually pulls you off track. Tick one once you've got it under control - untick if it creeps back.
-    </div>
+    <div class="panel-title">Noise over signal</div>
     <div class="two-col">
       <div>
         <div class="meta" style="font-weight:bold; color:#000;">Major Distractions</div>
@@ -98,10 +91,6 @@
 
     <div class="panel">
       <div class="panel-title">Cycle 1 - Sectional Tests (30 Days)</div>
-      <div class="meta" style="margin-bottom:8px;">
-        Order: Ethics first, working up to the top of the syllabus list (Polity), then wrapping through
-        the rest. Cycle 2 and beyond aren't planned yet - add them here once you know what they'll look like.
-      </div>
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
       <div class="meta" id="progressLabel" style="margin-bottom:8px;"></div>
 
@@ -122,10 +111,6 @@
           <tbody id="c1Body"></tbody>
         </table>
       </div>
-      <div class="meta" style="margin-top:8px;">
-        Drop each day's scanned answer script into <code>pdfs/c1/</code> matching the filename shown
-        (or edit the path field), commit, push - the "open" link then opens it from this site.
-      </div>
     </div>
 
   </div>
@@ -135,7 +120,7 @@
 
     <div class="panel">
       <div class="panel-title">Optional - Mechanical Engineering - Paper I</div>
-      <div class="meta" style="margin-bottom:8px;">10 days per topic - 50 days total. Notes column is yours to fill as you go.</div>
+      <div class="meta" style="margin-bottom:8px;">10 days per topic - 50 days total.</div>
       <div class="tbl-wrap">
         <table class="tracker">
           <thead>
@@ -179,7 +164,7 @@
   </div>
 
   <footer>
-    Static site - host on GitHub Pages. All progress data lives in your browser's local storage only.
+    Static site hosted on GH pages by Hemanth. Used AI to create the UI with my supervision and theme from Ycombinator.
   </footer>
 
 </div>
