@@ -1,0 +1,135 @@
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #f6f6ef;
+  color: #000;
+  font-family: Verdana, Geneva, sans-serif;
+  font-size: 10pt;
+}
+
+.topbar {
+  background: #ff6600;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.topbar .logo {
+  border: 1px solid #fff;
+  padding: 1px 4px;
+  font-weight: bold;
+  color: #fff;
+}
+.topbar .title {
+  color: #000;
+  font-weight: bold;
+}
+.topbar .sub {
+  color: #444;
+  font-size: 8.5pt;
+}
+
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 10px 12px 60px 12px;
+}
+
+a { color: #000; text-decoration: none; }
+a:visited { color: #828282; }
+a:hover { text-decoration: underline; }
+
+.panel {
+  background: #f6f6ef;
+  margin: 14px 0;
+}
+
+.panel-title {
+  font-weight: bold;
+  color: #000;
+  border-bottom: 1px solid #ff6600;
+  padding-bottom: 3px;
+  margin-bottom: 8px;
+  font-size: 10.5pt;
+}
+
+.meta {
+  color: #828282;
+  font-size: 8.5pt;
+}
+
+/* exam countdown */
+#examList { list-style: none; margin: 0; padding: 0; }
+#examList li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #e6e6e0;
+}
+#examList .exam-name { }
+#examList .exam-date { color: #828282; margin-left: 8px; }
+#examList .exam-days { font-weight: bold; color: #ff6600; min-width: 90px; text-align: right; }
+#examList .rm { color: #828282; margin-left: 8px; cursor: pointer; font-size: 8.5pt; }
+#examList .rm:hover { color: #ff6600; }
+
+.add-exam-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.add-exam-form input {
+  font-family: Verdana, Geneva, sans-serif;
+  font-size: 9pt;
+  padding: 3px 5px;
+  border: 1px solid #ccc;
+}
+.add-exam-form input[type=text] { flex: 1; min-width: 140px; }
+.add-exam-form button, .tab-btn, .pdf-link-btn {
+  font-family: Verdana, Geneva, sans-serif;
+  font-size: 9pt;
+  background: #ff6600;
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.add-exam-form button:hover, .tab-btn:hover { background: #e65c00; }
+
+/* tabs */
+.tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tab-btn { background: #eee; color: #000; }
+.tab-btn.active { background: #ff6600; color: #fff; }
+
+/* progress */
+.progress-track { background: #e6e6e0; height: 6px; margin: 6px 0 12px 0; }
+.progress-fill { background: #ff6600; height: 100%; }
+
+/* table */
+table.tracker { width: 100%; border-collapse: collapse; font-size: 9pt; }
+table.tracker th {
+  text-align: left; color: #828282; font-weight: normal;
+  border-bottom: 1px solid #ccc; padding: 4px 4px;
+}
+table.tracker td { padding: 4px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
+table.tracker tr.done td { background: #f0f7ea; }
+table.tracker tr:hover td { background: #fbf5e9; }
+.day-num { color: #828282; width: 26px; }
+select.status-sel {
+  font-family: Verdana; font-size: 8.5pt; padding: 2px;
+  border: 1px solid #ccc; background: #fff;
+}
+input.pdf-input, input.remark-input {
+  font-family: Verdana; font-size: 8.5pt; padding: 2px 3px;
+  border: 1px solid #ccc; width: 100%;
+}
+.pdf-open { color: #ff6600; margin-left: 3px; white-space: nowrap; }
+.chk { transform: scale(1.15); }
+
+footer {
+  color: #828282;
+  font-size: 8pt;
+  text-align: center;
+  margin-top: 30px;
+}

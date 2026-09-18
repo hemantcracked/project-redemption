@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>UPSC CSE Tracker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">CSE</span>
+  <span class="title">UPSC CSE Prep Tracker</span>
+  <span class="sub">Sarwesh K Verma framework | ForumIAS + Peeyush Kumar</span>
+</div>
+
+<div class="wrap">
+
+  <div class="panel">
+    <div class="panel-title">Exams</div>
+    <ul id="examList"></ul>
+    <form id="addExamForm" class="add-exam-form">
+      <input type="text" id="examName" placeholder="Exam name (e.g. UPSC Mains)" required>
+      <input type="date" id="examDate" required>
+      <button type="submit">add exam</button>
+    </form>
+    <div class="meta">Add exams you've applied for. Countdown updates automatically as days pass. Stored only in this browser.</div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">GS Paper Attack Order</div>
+    <table class="tracker">
+      <tr><td class="day-num">1</td><td>GS-I</td><td class="meta">Lower inertia to start; aim for impressive answering</td></tr>
+      <tr><td class="day-num">2</td><td>GS-III</td><td class="meta">-</td></tr>
+      <tr><td class="day-num">3</td><td>GS-II</td><td class="meta">Bulky syllabus, less time left - watch for generic answers</td></tr>
+      <tr><td class="day-num">4</td><td>GS-IV</td><td class="meta">Easy to finish, more time + clarity; overlaps with Essay + GS-II + GS-III + GS-I</td></tr>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Sectional Tests - 30 Days per Pass</div>
+    <div class="meta" style="margin-bottom:8px;">
+      Order: Ethics first, working up to the top of the syllabus list (Polity), then wrapping through
+      the remaining sections. Each cycle below is a fresh 30-day pass through all 30 sectional tests.
+    </div>
+    <div class="tabs" id="cycleTabs"></div>
+    <div id="cycleTitle" class="meta" style="margin-bottom:4px; font-weight:bold; color:#000;"></div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="meta" id="progressLabel" style="margin-bottom:8px;"></div>
+
+    <table class="tracker">
+      <thead>
+        <tr>
+          <th>Day</th>
+          <th>Test</th>
+          <th>Subject</th>
+          <th>Status</th>
+          <th>Answer PDF (in this repo)</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody id="tblBody"></tbody>
+    </table>
+
+    <div class="meta" style="margin-top:8px;">
+      Drop your scanned answer script for each day into <code>pdfs/&lt;cycle&gt;/</code> using the filename
+      shown (or edit the path field to match whatever you name it), commit, and push - the "open" link
+      will work once GitHub Pages rebuilds.
+    </div>
+  </div>
+
+  <footer>
+    Static site - host on GitHub Pages. All progress data lives in your browser's local storage only.
+  </footer>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
