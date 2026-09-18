@@ -1,33 +1,57 @@
 (function () {
   "use strict";
 
-  var EXAM_KEY = "upsc_tracker_exams_v2";
-  var C1_KEY = "upsc_tracker_c1_v2";
-  var OPT_KEY = "upsc_tracker_opt_v2";
-  var DIST_KEY = "upsc_tracker_distractions_v1";
-  var NOISE_KEY = "upsc_tracker_noise_v1";
+  /* ============================================================
+     FIREBASE CONFIGURATION
+     Paste your config from the Firebase Console here:
+  ============================================================ */
+  var firebaseConfig = {
+    apiKey: "AIzaSyC5gWvr4ExNrNSKNJMrUAdO7XT6HeA6o70",
+  authDomain: "project-redemption-5c9bf.firebaseapp.com",
+  databaseURL: "https://project-redemption-5c9bf-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "project-redemption-5c9bf",
+  storageBucket: "project-redemption-5c9bf.firebasestorage.app",
+  messagingSenderId: "625257583514",
+  appId: "1:625257583514:web:79e368e9144f67222f6023",
+  measurementId: "G-5VZQS74XY2"
+  };
 
-  function load(key, fallback) {
-    try {
-      var raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (e) { return fallback; }
-  }
-  function save(key, val) {
-    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
-  }
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.database();
+  var appRef = db.ref("tracker_data");
+
+  /* ============================================================
+     DEFAULTS & HELPERS
+  ============================================================ */
+  var DEFAULT_EXAMS = [
+    { name: "Engineering Services Exam", date: "2027-01-31", locked: true, done: false },
+    { name: "Civil Services Prelims", date: "2027-05-23", locked: true, done: false }
+  ];
+
+  var state = {
+    exams: DEFAULT_EXAMS,
+    distractions: [],
+    noise: [],
+    c1: {},
+    opt: {}
+  };
+
   function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
+    return String(s || "").replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
   function slug(s) {
-    return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+
+  // Push updates to Firebase
+  function syncToCloud() {
+    appRef.set(state);
   }
 
   /* ============================================================
-     QUOTES - short, publicly well-known lines, own words / brief
-     attributed aphorisms. Rotates once per day.
+     QUOTES
   ============================================================ */
   var quotes = [
     { t: "The will to prepare is more important than the will to win.", a: "attr. sports coaching wisdom" },
@@ -55,22 +79,8 @@
   }
 
   /* ============================================================
-     EXAMS - fixed defaults (ESE, Civil Services) cannot be
-     removed. Anything the user adds also cannot be removed -
-     only ticked as done (strikethrough).
+     EXAMS
   ============================================================ */
-  var DEFAULT_EXAMS = [
-    { name: "Engineering Services Exam", date: "2027-01-31", locked: true, done: false },
-    { name: "Civil Services Prelims", date: "2027-05-23", locked: true, done: false }
-  ];
-  var exams = load(EXAM_KEY, DEFAULT_EXAMS);
-  // guard: if an old save is missing the locked defaults, re-add them
-  ["Engineering Services Exam", "Civil Services Prelims"].forEach(function (nm, i) {
-    if (!exams.some(function (e) { return e.name === DEFAULT_EXAMS[i].name; })) {
-      exams.unshift(DEFAULT_EXAMS[i]);
-    }
-  });
-
   function daysUntil(dateStr) {
     var target = new Date(dateStr + "T00:00:00");
     var now = new Date();
@@ -81,7 +91,7 @@
   function renderExams() {
     var ul = document.getElementById("examList");
     ul.innerHTML = "";
-    exams.forEach(function (ex, idx) {
+    (state.exams || []).forEach(function (ex, idx) {
       var d = daysUntil(ex.date);
       var label = d > 0 ? d + " days left" : (d === 0 ? "today" : (-d) + " days ago");
       var li = document.createElement("li");
@@ -95,9 +105,8 @@
     });
     Array.prototype.forEach.call(ul.querySelectorAll(".tick-chk"), function (el) {
       el.addEventListener("change", function () {
-        exams[parseInt(el.dataset.idx, 10)].done = el.checked;
-        save(EXAM_KEY, exams);
-        renderExams();
+        state.exams[parseInt(el.dataset.idx, 10)].done = el.checked;
+        syncToCloud();
       });
     });
   }
@@ -107,63 +116,67 @@
     var name = document.getElementById("examName").value.trim();
     var date = document.getElementById("examDate").value;
     if (!name || !date) return;
-    exams.push({ name: name, date: date, locked: false, done: false });
-    save(EXAM_KEY, exams);
+    if (!state.exams) state.exams = [];
+    state.exams.push({ name: name, date: date, locked: false, done: false });
+    syncToCloud();
     document.getElementById("examName").value = "";
     document.getElementById("examDate").value = "";
-    renderExams();
   });
 
   /* ============================================================
-     DISTRACTIONS & NOISE - freely add / tick / remove
+     DISTRACTIONS & NOISE
   ============================================================ */
-  function makeSimpleList(storageKey, listElId, formId, inputId) {
-    var items = load(storageKey, []);
+  function renderSimpleList(type, listElId) {
+    var items = state[type] || [];
     var ul = document.getElementById(listElId);
-
-    function render() {
-      ul.innerHTML = "";
-      items.forEach(function (it, idx) {
-        var li = document.createElement("li");
-        li.className = it.done ? "struck" : "";
-        li.innerHTML =
-          '<input type="checkbox" class="tick-chk" data-idx="' + idx + '"' + (it.done ? " checked" : "") + '>' +
-          '<span>' + escapeHtml(it.text) + '</span>' +
-          '<span class="rm" data-idx="' + idx + '">[remove]</span>';
-        ul.appendChild(li);
-      });
-      Array.prototype.forEach.call(ul.querySelectorAll(".tick-chk"), function (el) {
-        el.addEventListener("change", function () {
-          items[parseInt(el.dataset.idx, 10)].done = el.checked;
-          save(storageKey, items);
-          render();
-        });
-      });
-      Array.prototype.forEach.call(ul.querySelectorAll(".rm"), function (el) {
-        el.addEventListener("click", function () {
-          items.splice(parseInt(el.dataset.idx, 10), 1);
-          save(storageKey, items);
-          render();
-        });
-      });
-    }
-
-    document.getElementById(formId).addEventListener("submit", function (e) {
-      e.preventDefault();
-      var input = document.getElementById(inputId);
-      var val = input.value.trim();
-      if (!val) return;
-      items.push({ text: val, done: false });
-      save(storageKey, items);
-      input.value = "";
-      render();
+    ul.innerHTML = "";
+    items.forEach(function (it, idx) {
+      var li = document.createElement("li");
+      li.className = it.done ? "struck" : "";
+      li.innerHTML =
+        '<input type="checkbox" class="tick-chk" data-idx="' + idx + '"' + (it.done ? " checked" : "") + '>' +
+        '<span>' + escapeHtml(it.text) + '</span>' +
+        '<span class="rm" data-idx="' + idx + '">[remove]</span>';
+      ul.appendChild(li);
     });
-
-    render();
+    Array.prototype.forEach.call(ul.querySelectorAll(".tick-chk"), function (el) {
+      el.addEventListener("change", function () {
+        state[type][parseInt(el.dataset.idx, 10)].done = el.checked;
+        syncToCloud();
+      });
+    });
+    Array.prototype.forEach.call(ul.querySelectorAll(".rm"), function (el) {
+      el.addEventListener("click", function () {
+        state[type].splice(parseInt(el.dataset.idx, 10), 1);
+        syncToCloud();
+      });
+    });
   }
 
+  document.getElementById("addDistractionForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = document.getElementById("distractionInput");
+    var val = input.value.trim();
+    if (!val) return;
+    if (!state.distractions) state.distractions = [];
+    state.distractions.push({ text: val, done: false });
+    syncToCloud();
+    input.value = "";
+  });
+
+  document.getElementById("addNoiseForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var input = document.getElementById("noiseInput");
+    var val = input.value.trim();
+    if (!val) return;
+    if (!state.noise) state.noise = [];
+    state.noise.push({ text: val, done: false });
+    syncToCloud();
+    input.value = "";
+  });
+
   /* ============================================================
-     TOP-LEVEL TABS: GS Mains / Optional
+     TOP-LEVEL TABS
   ============================================================ */
   var topTabs = [
     { id: "gs", label: "GS Mains", sectionId: "gsSection" },
@@ -191,47 +204,36 @@
   }
 
   /* ============================================================
-     GS MAINS - Cycle 1 sectional tests
+     GS MAINS - CYCLE 1
   ============================================================ */
   var subjects = {
     1: "Polity", 2: "Polity", 3: "Polity",
     4: "Economy", 5: "Economy",
-    6: "Modern History",
-    7: "Geography",
-    8: "Art & Culture",
-    9: "Governance",
-    10: "Society & Social Issues",
-    11: "International Relations",
-    12: "Economy",
-    13: "Agriculture",
-    14: "Science & Technology",
-    15: "Environment",
-    16: "Security",
+    6: "Modern History", 7: "Geography", 8: "Art & Culture",
+    9: "Governance", 10: "Society & Social Issues",
+    11: "International Relations", 12: "Economy", 13: "Agriculture",
+    14: "Science & Technology", 15: "Environment", 16: "Security",
     17: "Ethics", 18: "Ethics", 19: "Ethics", 20: "Ethics",
-    21: "World History",
-    22: "Indian Society",
-    23: "Geography",
-    24: "Polity",
-    25: "Polity (Executive & Legislature)",
-    26: "Polity (Const. & Non-Const. Bodies)",
-    27: "Polity (Governance)",
-    28: "Social Justice (Polity)",
-    29: "Polity (Social Justice)",
+    21: "World History", 22: "Indian Society", 23: "Geography",
+    24: "Polity", 25: "Polity (Executive & Legislature)",
+    26: "Polity (Const. & Non-Const. Bodies)", 27: "Polity (Governance)",
+    28: "Social Justice (Polity)", 29: "Polity (Social Justice)",
     30: "International Relations"
   };
+
   var priorityOrder = [
-    20, 19, 18, 17,           // Ethics
-    1,2,3,9,11,24,25,26,27,28,29,30,
-    4,5,12,13,14,15,16,  // Security -> IR
-    6,7,10,21,22,23,8   // Society -> Economy           // Geography, Indian Society, World History
+    20, 19, 18, 17,
+    1, 2, 3, 9, 11, 24, 25, 26, 27, 28, 29, 30,
+    4, 5, 12, 13, 14, 15, 16,
+    6, 7, 10, 21, 22, 23, 8
   ];
 
-  var c1data = load(C1_KEY, {});
   function ensureC1(day) {
-    if (!c1data[day]) {
-      c1data[day] = { date: "", status: "Not Started", pdf: "", cp: "", remarks: "" };
+    if (!state.c1) state.c1 = {};
+    if (!state.c1[day]) {
+      state.c1[day] = { date: "", status: "Not Started", pdf: "", cp: "", remarks: "" };
     }
-    return c1data[day];
+    return state.c1[day];
   }
   function defaultPdfPath(day, subj) {
     var dd = day < 10 ? "0" + day : "" + day;
@@ -261,13 +263,17 @@
 
       var tdDate = document.createElement("td");
       var inDate = input("date", row.date, "date-input");
-      inDate.addEventListener("change", function (e) { ensureC1(day).date = e.target.value; save(C1_KEY, c1data); });
+      inDate.addEventListener("change", function (e) {
+        ensureC1(day).date = e.target.value;
+        syncToCloud();
+      });
       tdDate.appendChild(inDate);
       tr.appendChild(tdDate);
 
       var tdStatus = document.createElement("td");
       var sel = statusSelect(row.status, function (val) {
-        ensureC1(day).status = val; save(C1_KEY, c1data); renderC1();
+        ensureC1(day).status = val;
+        syncToCloud();
       });
       tdStatus.appendChild(sel);
       tr.appendChild(tdStatus);
@@ -275,7 +281,10 @@
       var tdPdf = document.createElement("td");
       tdPdf.className = "col-pdf";
       var inPdf = input("text", row.pdf, "pdf-input");
-      inPdf.addEventListener("change", function (e) { ensureC1(day).pdf = e.target.value; save(C1_KEY, c1data); });
+      inPdf.addEventListener("change", function (e) {
+        ensureC1(day).pdf = e.target.value;
+        syncToCloud();
+      });
       tdPdf.appendChild(inPdf);
       tdPdf.appendChild(openLink(row.pdf));
       tr.appendChild(tdPdf);
@@ -283,14 +292,20 @@
       var tdCp = document.createElement("td");
       tdCp.className = "col-remarks";
       var inCp = input("text", row.cp, "remark-input");
-      inCp.addEventListener("change", function (e) { ensureC1(day).cp = e.target.value; save(C1_KEY, c1data); });
+      inCp.addEventListener("change", function (e) {
+        ensureC1(day).cp = e.target.value;
+        syncToCloud();
+      });
       tdCp.appendChild(inCp);
       tr.appendChild(tdCp);
 
       var tdRem = document.createElement("td");
       tdRem.className = "col-remarks";
       var inRem = input("text", row.remarks, "remark-input");
-      inRem.addEventListener("change", function (e) { ensureC1(day).remarks = e.target.value; save(C1_KEY, c1data); });
+      inRem.addEventListener("change", function (e) {
+        ensureC1(day).remarks = e.target.value;
+        syncToCloud();
+      });
       tdRem.appendChild(inRem);
       tr.appendChild(tdRem);
 
@@ -315,7 +330,7 @@
   }
 
   /* ============================================================
-     OPTIONAL - Mechanical Engineering
+     OPTIONAL (ME)
   ============================================================ */
   var optPaper1 = [
     { topic: "Mechanics", ref: "Beer & Johnston", approach: "Solve problems", days: 10 },
@@ -332,13 +347,13 @@
     { topic: "Refrigeration & Air Conditioning", ref: "Cengel", approach: "Intuition + solve", days: "" }
   ];
 
-  var optData = load(OPT_KEY, {});
   function ensureOpt(paperKey, idx) {
-    if (!optData[paperKey]) optData[paperKey] = {};
-    if (!optData[paperKey][idx]) {
-      optData[paperKey][idx] = { date: "", status: "Not Started", note: "", remarks: "" };
+    if (!state.opt) state.opt = {};
+    if (!state.opt[paperKey]) state.opt[paperKey] = {};
+    if (!state.opt[paperKey][idx]) {
+      state.opt[paperKey][idx] = { date: "", status: "Not Started", note: "", remarks: "" };
     }
-    return optData[paperKey][idx];
+    return state.opt[paperKey][idx];
   }
   function defaultOptPath(paperKey, idx, topic) {
     return "pdfs/optional/" + paperKey + "/" + (idx + 1) + "-" + slug(topic) + ".pdf";
@@ -361,13 +376,17 @@
 
       var tdDate = document.createElement("td");
       var inDate = input("date", row.date, "date-input");
-      inDate.addEventListener("change", function (e) { ensureOpt(paperKey, idx).date = e.target.value; save(OPT_KEY, optData); });
+      inDate.addEventListener("change", function (e) {
+        ensureOpt(paperKey, idx).date = e.target.value;
+        syncToCloud();
+      });
       tdDate.appendChild(inDate);
       tr.appendChild(tdDate);
 
       var tdStatus = document.createElement("td");
       var sel = statusSelect(row.status, function (val) {
-        ensureOpt(paperKey, idx).status = val; save(OPT_KEY, optData); renderOptTable(paperKey, list, bodyId);
+        ensureOpt(paperKey, idx).status = val;
+        syncToCloud();
       });
       tdStatus.appendChild(sel);
       tr.appendChild(tdStatus);
@@ -375,7 +394,10 @@
       var tdNote = document.createElement("td");
       tdNote.className = "col-pdf";
       var inNote = input("text", row.note, "pdf-input");
-      inNote.addEventListener("change", function (e) { ensureOpt(paperKey, idx).note = e.target.value; save(OPT_KEY, optData); });
+      inNote.addEventListener("change", function (e) {
+        ensureOpt(paperKey, idx).note = e.target.value;
+        syncToCloud();
+      });
       tdNote.appendChild(inNote);
       tdNote.appendChild(openLink(row.note));
       tr.appendChild(tdNote);
@@ -383,7 +405,10 @@
       var tdRem = document.createElement("td");
       tdRem.className = "col-remarks";
       var inRem = input("text", row.remarks, "remark-input");
-      inRem.addEventListener("change", function (e) { ensureOpt(paperKey, idx).remarks = e.target.value; save(OPT_KEY, optData); });
+      inRem.addEventListener("change", function (e) {
+        ensureOpt(paperKey, idx).remarks = e.target.value;
+        syncToCloud();
+      });
       tdRem.appendChild(inRem);
       tr.appendChild(tdRem);
 
@@ -392,7 +417,7 @@
   }
 
   /* ============================================================
-     small DOM helpers
+     DOM HELPERS
   ============================================================ */
   function td(text, cls) {
     var el = document.createElement("td");
@@ -429,17 +454,45 @@
     return a;
   }
 
+  function renderAll() {
+    renderQuote();
+    renderExams();
+    renderSimpleList("distractions", "distractionList");
+    renderSimpleList("noise", "noiseList");
+    renderTopTabs();
+    renderC1();
+    renderOptTable("paper1", optPaper1, "optP1Body");
+    renderOptTable("paper2", optPaper2, "optP2Body");
+  }
+
   /* ============================================================
-     init
+     REALTIME SYNC LISTENER & LOCAL STORAGE MIGRATION
   ============================================================ */
-  renderQuote();
-  renderExams();
-  makeSimpleList(DIST_KEY, "distractionList", "addDistractionForm", "distractionInput");
-  makeSimpleList(NOISE_KEY, "noiseList", "addNoiseForm", "noiseInput");
-  renderTopTabs();
-  renderC1();
-  renderOptTable("paper1", optPaper1, "optP1Body");
-  renderOptTable("paper2", optPaper2, "optP2Body");
+  appRef.on("value", function (snapshot) {
+    var val = snapshot.val();
+    if (val) {
+      state = val;
+      renderAll();
+    } else {
+      // First run: migrate existing laptop localStorage into Firebase
+      try {
+        var oldExams = localStorage.getItem("upsc_tracker_exams_v2");
+        var oldC1 = localStorage.getItem("upsc_tracker_c1_v2");
+        var oldOpt = localStorage.getItem("upsc_tracker_opt_v2");
+        var oldDist = localStorage.getItem("upsc_tracker_distractions_v1");
+        var oldNoise = localStorage.getItem("upsc_tracker_noise_v1");
+
+        if (oldExams) state.exams = JSON.parse(oldExams);
+        if (oldC1) state.c1 = JSON.parse(oldC1);
+        if (oldOpt) state.opt = JSON.parse(oldOpt);
+        if (oldDist) state.distractions = JSON.parse(oldDist);
+        if (oldNoise) state.noise = JSON.parse(oldNoise);
+      } catch (err) {}
+
+      syncToCloud();
+      renderAll();
+    }
+  });
 
   setInterval(renderExams, 60 * 1000);
 })();
