@@ -222,7 +222,7 @@
   var priorityOrder = [
     20, 19, 18, 17,           // Ethics
     1,2,3,9,11,24,25,26,27,28,29,30,
-    4,5,12,13,14,15,16  // Security -> IR
+    4,5,12,13,14,15,16,  // Security -> IR
     6,7,10,21,22,23,8   // Society -> Economy           // Geography, Indian Society, World History
   ];
 
