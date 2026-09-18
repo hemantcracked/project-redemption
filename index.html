@@ -11,11 +11,21 @@
 <div class="topbar">
   <span class="logo">CSE</span>
   <span class="title">UPSC CSE Prep Tracker</span>
-  <span class="sub">Sarwesh K Verma framework | ForumIAS + Peeyush Kumar</span>
+  <span class="sub"> ForumIAS MGP + Peeyush Kumar for ethics | Optional: Mechanical Engineering self</span>
 </div>
 
 <div class="wrap">
 
+  <!-- ================= QUOTE / MOTIVATION ================= -->
+  <div class="panel">
+    <div class="quote-box">
+      <span class="prompt">&gt;</span> <span id="quoteText">loading...</span>
+      <div class="author" id="quoteAuthor"></div>
+    </div>
+    <div class="pulse-line" id="pulseLine"></div>
+  </div>
+
+  <!-- ================= EXAMS ================= -->
   <div class="panel">
     <div class="panel-title">Exams</div>
     <ul id="examList"></ul>
@@ -24,49 +34,148 @@
       <input type="date" id="examDate" required>
       <button type="submit">add exam</button>
     </form>
-    <div class="meta">Add exams you've applied for. Countdown updates automatically as days pass. Stored only in this browser.</div>
+    <div class="meta">
+      Countdown updates automatically as days pass. Nothing here can be deleted -
+      tick the box once an exam is done/passed and it strikes through instead.
+    </div>
   </div>
 
+  <!-- ================= DAILY SCHEDULE ================= -->
   <div class="panel">
-    <div class="panel-title">GS Paper Attack Order</div>
-    <table class="tracker">
-      <tr><td class="day-num">1</td><td>GS-I</td><td class="meta">Lower inertia to start; aim for impressive answering</td></tr>
-      <tr><td class="day-num">2</td><td>GS-III</td><td class="meta">-</td></tr>
-      <tr><td class="day-num">3</td><td>GS-II</td><td class="meta">Bulky syllabus, less time left - watch for generic answers</td></tr>
-      <tr><td class="day-num">4</td><td>GS-IV</td><td class="meta">Easy to finish, more time + clarity; overlaps with Essay + GS-II + GS-III + GS-I</td></tr>
+    <div class="panel-title">Daily Schedule</div>
+    <table class="schedule">
+      <tr><td class="time">5:30 - 7:00</td><td>GS - Answer Writing</td></tr>
+      <tr><td class="time">8:30 - 1:00</td><td>AI/ML Roadmap</td></tr>
+      <tr><td class="time">2:00 - 5:30</td><td>Optional (ME) - GATE / ESE etc.</td></tr>
+      <tr><td class="time">6:00 - 7:30</td><td>CSAT / PYQ / DSA</td></tr>
+      <tr><td class="time">9:30 - 11:00</td><td>Project</td></tr>
+      <tr><td class="time">11:00 PM</td><td>Sleep</td></tr>
     </table>
   </div>
 
+  <!-- ================= DISTRACTIONS / NOISE ================= -->
   <div class="panel">
-    <div class="panel-title">Sectional Tests - 30 Days per Pass</div>
+    <div class="panel-title">Distractions &amp; Noise</div>
     <div class="meta" style="margin-bottom:8px;">
-      Order: Ethics first, working up to the top of the syllabus list (Polity), then wrapping through
-      the remaining sections. Each cycle below is a fresh 30-day pass through all 30 sectional tests.
+      Name what actually pulls you off track. Tick one once you've got it under control - untick if it creeps back.
     </div>
-    <div class="tabs" id="cycleTabs"></div>
-    <div id="cycleTitle" class="meta" style="margin-bottom:4px; font-weight:bold; color:#000;"></div>
-    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
-    <div class="meta" id="progressLabel" style="margin-bottom:8px;"></div>
-
-    <table class="tracker">
-      <thead>
-        <tr>
-          <th>Day</th>
-          <th>Test</th>
-          <th>Subject</th>
-          <th>Status</th>
-          <th>Answer PDF (in this repo)</th>
-          <th>Remarks</th>
-        </tr>
-      </thead>
-      <tbody id="tblBody"></tbody>
-    </table>
-
-    <div class="meta" style="margin-top:8px;">
-      Drop your scanned answer script for each day into <code>pdfs/&lt;cycle&gt;/</code> using the filename
-      shown (or edit the path field to match whatever you name it), commit, and push - the "open" link
-      will work once GitHub Pages rebuilds.
+    <div class="two-col">
+      <div>
+        <div class="meta" style="font-weight:bold; color:#000;">Major Distractions</div>
+        <ul class="item-list" id="distractionList"></ul>
+        <form class="add-item-form" id="addDistractionForm">
+          <input type="text" id="distractionInput" placeholder="e.g. phone scrolling after lunch" required>
+          <button type="submit">add</button>
+        </form>
+      </div>
+      <div>
+        <div class="meta" style="font-weight:bold; color:#000;">Noise I'm Falling Prey To</div>
+        <ul class="item-list" id="noiseList"></ul>
+        <form class="add-item-form" id="addNoiseForm">
+          <input type="text" id="noiseInput" placeholder="e.g. rank/score comparisons online" required>
+          <button type="submit">add</button>
+        </form>
+      </div>
     </div>
+  </div>
+
+  <!-- ================= TOP LEVEL TABS ================= -->
+  <div class="top-tabs" id="topTabs"></div>
+
+  <!-- ---------------- GS MAINS SECTION ---------------- -->
+  <div id="gsSection">
+
+    <div class="panel">
+      <div class="panel-title">GS Paper Attack Order</div>
+      <table class="tracker" style="min-width:0;">
+        <tr><td class="day-num">1</td><td>GS-IV</td><td class="meta">Start here - easy to finish, builds momentum + clarity</td></tr>
+        <tr><td class="day-num">2</td><td>Essay</td><td class="meta">-</td></tr>
+        <tr><td class="day-num">3</td><td>GS-II</td><td class="meta">Bulky syllabus - watch for generic answers</td></tr>
+        <tr><td class="day-num">4</td><td>GS-III</td><td class="meta">-</td></tr>
+        <tr><td class="day-num">5</td><td>GS-I</td><td class="meta">Lower inertia by now - aim for impressive answering</td></tr>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Cycle 1 - Sectional Tests (30 Days)</div>
+      <div class="meta" style="margin-bottom:8px;">
+        Order: Ethics first, working up to the top of the syllabus list (Polity), then wrapping through
+        the rest. Cycle 2 and beyond aren't planned yet - add them here once you know what they'll look like.
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="meta" id="progressLabel" style="margin-bottom:8px;"></div>
+
+      <div class="tbl-wrap">
+        <table class="tracker">
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Test</th>
+              <th class="col-subject">Subject</th>
+              <th>Date Attempted</th>
+              <th>Status</th>
+              <th class="col-pdf">Answer PDF</th>
+              <th class="col-remarks">CP Remarks</th>
+              <th class="col-remarks">Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="c1Body"></tbody>
+        </table>
+      </div>
+      <div class="meta" style="margin-top:8px;">
+        Drop each day's scanned answer script into <code>pdfs/c1/</code> matching the filename shown
+        (or edit the path field), commit, push - the "open" link then opens it from this site.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ---------------- OPTIONAL (ME) SECTION ---------------- -->
+  <div id="optSection" class="hidden">
+
+    <div class="panel">
+      <div class="panel-title">Optional - Mechanical Engineering - Paper I</div>
+      <div class="meta" style="margin-bottom:8px;">10 days per topic - 50 days total. Notes column is yours to fill as you go.</div>
+      <div class="tbl-wrap">
+        <table class="tracker">
+          <thead>
+            <tr>
+              <th>Topic</th>
+              <th class="col-subject">Reference</th>
+              <th>Approach</th>
+              <th>Days</th>
+              <th>Date Attempted</th>
+              <th>Status</th>
+              <th class="col-pdf">Notes / PDF</th>
+              <th class="col-remarks">Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="optP1Body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Optional - Mechanical Engineering - Paper II</div>
+      <div class="tbl-wrap">
+        <table class="tracker">
+          <thead>
+            <tr>
+              <th>Topic</th>
+              <th class="col-subject">Reference</th>
+              <th>Approach</th>
+              <th>Days</th>
+              <th>Date Attempted</th>
+              <th>Status</th>
+              <th class="col-pdf">Notes / PDF</th>
+              <th class="col-remarks">Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="optP2Body"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <footer>
