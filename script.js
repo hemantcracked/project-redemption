@@ -33,7 +33,8 @@
     distractions: [],
     noise: [],
     c1: {},
-    opt: {}
+    opt: {},
+    slots:{}
   };
 
   function escapeHtml(s) {
@@ -454,6 +455,162 @@
     return a;
   }
 
+  /* ============================================================
+     MINIMAL CONSISTENCY CALENDAR
+  ============================================================ */
+  var DAILY_SLOTS = [
+    { id: 0, label: "5:30 GS Writing" },
+    { id: 1, label: "8:30 AI/ML" },
+    { id: 2, label: "2:00 Optional (ME)" },
+    { id: 3, label: "6:00 CSAT / DSA" },
+    { id: 4, label: "9:30 Project" }
+  ];
+
+  var calViewDate = new Date();
+  var selectedDateStr = null;
+
+  function toDateKey(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+
+  function renderCalendar() {
+    var grid = document.getElementById("calGrid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    var year = calViewDate.getFullYear();
+    var month = calViewDate.getMonth();
+    var monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    document.getElementById("calMonthLabel").textContent = monthNames[month] + " " + year;
+
+    // Day headers (Mon - Sun)
+    var dayHeaders = ["M", "T", "W", "T", "F", "S", "S"];
+    dayHeaders.forEach(function (dh) {
+      var h = document.createElement("div");
+      h.className = "cal-day-header";
+      h.textContent = dh;
+      grid.appendChild(h);
+    });
+
+    var firstDayIdx = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
+    var totalDays = new Date(year, month + 1, 0).getDate();
+    var todayKey = toDateKey(new Date());
+
+    // Empty lead cells
+    for (var e = 0; e < firstDayIdx; e++) {
+      var emptyCell = document.createElement("div");
+      emptyCell.className = "cal-cell empty";
+      grid.appendChild(emptyCell);
+    }
+
+    if (!state.slots) state.slots = {};
+
+    for (var d = 1; d <= totalDays; d++) {
+      var currentCellDate = new Date(year, month, d);
+      var key = toDateKey(currentCellDate);
+      var slotData = state.slots[key] || [0, 0, 0, 0, 0];
+      var doneCount = slotData.reduce(function (a, b) { return a + (b ? 1 : 0); }, 0);
+
+      var cell = document.createElement("div");
+      cell.className = "cal-cell heat-" + doneCount + (key === todayKey ? " today" : "");
+      cell.dataset.date = key;
+
+      var numSpan = document.createElement("span");
+      numSpan.className = "cal-num";
+      numSpan.textContent = d;
+      cell.appendChild(numSpan);
+
+      // Micro dots for 5 slots
+      var dotsDiv = document.createElement("div");
+      dotsDiv.className = "cal-dots";
+      for (var s = 0; s < 5; s++) {
+        var dot = document.createElement("span");
+        dot.className = "cal-dot" + (slotData[s] ? " active" : "");
+        dotsDiv.appendChild(dot);
+      }
+      cell.appendChild(dotsDiv);
+
+      cell.addEventListener("click", function (evt) {
+        openSlotLogger(this.dataset.date);
+      });
+
+      grid.appendChild(cell);
+    }
+
+    calculateStreak();
+  }
+
+  function openSlotLogger(dateStr) {
+    selectedDateStr = dateStr;
+    var logger = document.getElementById("slotLogger");
+    var label = document.getElementById("loggerDateLabel");
+    var container = document.getElementById("slotPillsContainer");
+
+    logger.classList.remove("hidden");
+    label.textContent = "Slots completed on: " + dateStr;
+    container.innerHTML = "";
+
+    var slotData = (state.slots && state.slots[dateStr]) ? state.slots[dateStr] : [0, 0, 0, 0, 0];
+
+    DAILY_SLOTS.forEach(function (slot, i) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "slot-pill" + (slotData[i] ? " done" : "");
+      btn.textContent = (slotData[i] ? "✓ " : "+ ") + slot.label;
+
+      btn.addEventListener("click", function () {
+        if (!state.slots) state.slots = {};
+        if (!state.slots[dateStr]) state.slots[dateStr] = [0, 0, 0, 0, 0];
+        state.slots[dateStr][i] = state.slots[dateStr][i] ? 0 : 1;
+        syncToCloud();
+        openSlotLogger(dateStr);
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  function calculateStreak() {
+    var streak = 0;
+    var checkDate = new Date();
+    
+    // If today has at least 1 slot logged, start checking from today, else yesterday
+    var todayKey = toDateKey(checkDate);
+    var todaySlots = (state.slots && state.slots[todayKey]) ? state.slots[todayKey] : [];
+    var todayDone = todaySlots.some(function (v) { return v === 1; });
+
+    if (!todayDone) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    while (true) {
+      var k = toDateKey(checkDate);
+      var slots = (state.slots && state.slots[k]) ? state.slots[k] : [];
+      var hasDone = slots.some(function (v) { return v === 1; });
+      if (hasDone) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    document.getElementById("streakBadge").textContent = "🔥 " + streak + "-day streak";
+  }
+
+  // Calendar Navigation Listeners
+  document.getElementById("prevMonthBtn").addEventListener("click", function () {
+    calViewDate.setMonth(calViewDate.getMonth() - 1);
+    renderCalendar();
+  });
+  document.getElementById("nextMonthBtn").addEventListener("click", function () {
+    calViewDate.setMonth(calViewDate.getMonth() + 1);
+    renderCalendar();
+  });
+  document.getElementById("closeLoggerBtn").addEventListener("click", function () {
+    document.getElementById("slotLogger").classList.add("hidden");
+  });
   function renderAll() {
     renderQuote();
     renderExams();
@@ -463,6 +620,7 @@
     renderC1();
     renderOptTable("paper1", optPaper1, "optP1Body");
     renderOptTable("paper2", optPaper2, "optP2Body");
+    renderCalendar();
   }
 
   /* ============================================================
