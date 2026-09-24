@@ -118,6 +118,59 @@
 
     <div class="panel">
       <div class="panel-title">Cycle 1 - Sectional Tests (30 Days)</div>
+      <!-- ================= SUBJECT BLOCK & ACTIVE TEST HUD ================= -->
+      <div class="mission-hud" id="missionHud">
+        <!-- Configuration Controls -->
+        <div class="hud-config-bar">
+          <div>
+            <label><b>Subject:</b></label>
+            <input type="text" id="subjectName" value="Ethics (GS-IV)" style="width:120px;">
+          </div>
+          <div>
+            <label><b>Started On:</b></label>
+            <input type="date" id="subjectStartDate">
+          </div>
+          <div>
+            <label><b>Days Allocated:</b></label>
+            <input type="number" id="blockDurationDays" value="30" min="1" max="90" style="width:45px;">
+          </div>
+          <div>
+            <label><b>Tests in this Subject:</b></label>
+            <input type="number" id="subjectTotalTests" value="4" min="1" max="30" style="width:40px;">
+          </div>
+        </div>
+
+        <!-- Active Test Card -->
+        <div class="hud-main">
+          <div>
+            <div class="hud-day-test" id="hudDayTest">Day 1 &bull; Test 20</div>
+            <div class="hud-subject" id="hudTargetText">Complete 1 test per <b>-- days</b> from today</div>
+          </div>
+          
+          <!-- Intensity Selector + Advance -->
+          <div class="hud-actions">
+            <div class="intensity-picker">
+              <span class="meta" style="color:#bbb;">Writing Intensity:</span>
+              <select id="hudIntensitySelect">
+                <option value="High (Exam Mode)">High (Exam Mode)</option>
+                <option value="⚡ Good Flow">⚡ Good Flow</option>
+                <option value="📝 Moderate">📝 Moderate</option>
+                <option value="🐢 Low / Rough">🐢 Low / Rough</option>
+              </select>
+            </div>
+            <button type="button" class="hud-advance-btn" id="hudCompleteBtn">
+              Next Test;
+            </button>
+          </div>
+        </div>
+
+        <div class="hud-deadline-row">
+          <span class="meta" id="hudBlockMeta">Block ends: --</span>
+          <span class="hud-quote" id="hudQuote">"Quality answers come from timed intensity, not leisurely reading."</span>
+        </div>
+      </div>
+      <!-- =================================================================== -->
+      <!-- ===================================================================== -->
       <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
       <div class="meta" id="progressLabel" style="margin-bottom:8px;"></div>
 
@@ -128,6 +181,7 @@
               <th>Day</th>
               <th>Test</th>
               <th class="col-subject">Subject</th>
+              <th>Intensity</th>
               <th>Date Attempted</th>
               <th>Status</th>
               <th class="col-pdf">Answer PDF</th>
@@ -149,6 +203,10 @@
 
     <div class="panel">
       <div class="panel-title">Optional - Mechanical Engineering - Paper I</div>
+      <div class="cycle-controls">
+        <label for="optP1StartDate"><b>Paper 1 Start Date:</b></label>
+        <input type="date" id="optP1StartDate">
+      </div>
       <div class="meta" style="margin-bottom:8px;">10 days per topic - 50 days total.</div>
       <div class="tbl-wrap">
         <table class="tracker">
@@ -175,10 +233,12 @@
         <table class="tracker">
           <thead>
             <tr>
+              <th>Done</th>
               <th>Topic</th>
               <th class="col-subject">Reference</th>
               <th>Approach</th>
               <th>Days</th>
+              <th>Deadline</th>
               <th>Date Attempted</th>
               <th>Status</th>
               <th class="col-pdf">Notes / PDF</th>
