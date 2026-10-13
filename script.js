@@ -47,8 +47,31 @@
   }
 
   // Push updates to Firebase
+  var loaded = false;      // true only after a successful read of tracker_data
   function syncToCloud() {
-    appRef.set(state);
+    if (!loaded) return;   // never write before the real data has been read
+    appRef.set(state).catch(function (err) { showGate("Save failed: " + err.message + ". Your change was not saved.", true); });
+  }
+  function showGate(msg, canSignIn) {
+    var g = document.getElementById("authGate");
+    if (!g) {
+      g = document.createElement("div");
+      g.id = "authGate";
+      g.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.85);color:#fff;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font:16px sans-serif;text-align:center;padding:24px";
+      g.innerHTML = '<div id="authMsg"></div><button id="authBtn" style="padding:12px 20px;font-size:16px">Sign in with Google</button>';
+      document.body.appendChild(g);
+      document.getElementById("authBtn").onclick = function () {
+        firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())
+          .catch(function (err) { showGate("Sign-in failed: " + err.message, true); });
+      };
+    }
+    document.getElementById("authMsg").textContent = msg;
+    document.getElementById("authBtn").style.display = canSignIn ? "" : "none";
+    g.style.display = "flex";
+  }
+  function hideGate() {
+    var g = document.getElementById("authGate");
+    if (g) g.style.display = "none";
   }
 
   /* ============================================================
@@ -973,8 +996,10 @@
   /* ============================================================
      REALTIME SYNC LISTENER & LOCAL STORAGE MIGRATION
   ============================================================ */
-  appRef.on("value", function (snapshot) {
+  function onData(snapshot) {
     var val = snapshot.val();
+    loaded = true;
+    hideGate();
     if (val) {
       state = val;
       renderAll();
@@ -997,6 +1022,22 @@
       syncToCloud();
       renderAll();
     }
+  }
+
+
+  function onReadError(err) {
+    loaded = false;
+    showGate("Could not load your tracker: " + err.message, true);
+  }
+
+  var listening = false;
+  firebase.auth().onAuthStateChanged(function (user) {
+    if (listening) { appRef.off("value", onData); listening = false; }
+    loaded = false;
+    if (!user) { showGate("Sign in to open your tracker", true); return; }
+    showGate("Loading your tracker...", false);
+    listening = true;
+    appRef.on("value", onData, onReadError);
   });
 
   setInterval(renderExams, 60 * 1000);
