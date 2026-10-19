@@ -34,7 +34,8 @@
     noise: [],
     c1: {},
     opt: {},
-    slots:{}
+    slots:{},
+    dayNotes:{}
   };
 
   function escapeHtml(s) {
@@ -301,7 +302,7 @@
   ============================================================ */
   var PUNCHLINES = {
     ahead: [
-      "Buffer secured. Don't relax—strike the iron while it's red hot.",
+      "Buffer secured. Don't relax - strike the iron while it's red hot.",
       "Ahead of the clock. This is how top ranks create breathing room for revision.",
       "Relentless momentum. Keep the knife sharp."
     ],
@@ -312,7 +313,7 @@
     ],
     behind: [
       "Inertia is your only enemy. Stop planning, open the script and write.",
-      "The exam doesn't care about bad days. Squeeze out an average test—it still counts.",
+      "The exam doesn't care about bad days. Squeeze out an average test - it still counts.",
       "Behind pace. Cut the noise, sit in the chair, and get this test off your back today."
     ]
   };
@@ -322,7 +323,7 @@
   ============================================================ */
   var PUNCHLINES = {
     ahead: [
-      "Buffer secured. Don't relax—crush the next script while momentum is on your side.",
+      "Buffer secured. Don't relax - crush the next script while momentum is on your side.",
       "Ahead of the clock. This is how top ranks create breathing room for revision.",
       "Relentless pace. Keep the pen moving."
     ],
@@ -903,6 +904,14 @@
       }
       cell.appendChild(dotsDiv);
 
+      // Small marker when the day has a "what got in the way" note
+      if (state.dayNotes && state.dayNotes[key]) {
+        var noteMark = document.createElement("span");
+        noteMark.className = "cal-note-mark";
+        noteMark.textContent = "✎";
+        cell.appendChild(noteMark);
+      }
+
       cell.addEventListener("click", function (evt) {
         openSlotLogger(this.dataset.date);
       });
@@ -940,6 +949,26 @@
       });
       container.appendChild(btn);
     });
+
+    // Optional per-day note: "What got in the way today?"
+    if (!state.dayNotes) state.dayNotes = {};
+    var noteInput = document.getElementById("dayNoteInput");
+    if (noteInput) {
+      noteInput.value = state.dayNotes[dateStr] || "";
+      noteInput.oninput = function () {
+        clearTimeout(noteInput._saveTimer);
+        noteInput._saveTimer = setTimeout(function () {
+          if (!state.dayNotes) state.dayNotes = {};
+          var v = noteInput.value.trim();
+          if (v) {
+            state.dayNotes[dateStr] = noteInput.value;
+          } else {
+            delete state.dayNotes[dateStr];
+          }
+          syncToCloud();
+        }, 600);
+      };
+    }
   }
 
   function calculateStreak() {
