@@ -114,7 +114,7 @@ ul.item-list li .rm:hover { color: #ff6600; }
 }
 .top-tab-btn.active { background: #fff3e6; border-bottom: 3px solid #ff6600; color: #b35c00; }
 
-/* cycle tabs (within GS Mains) */
+/* cycle tabs */
 .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
 .tab-btn.small { background: #eee; color: #000; }
 .tab-btn.active { background: #ff6600; color: #fff; }
@@ -145,10 +145,28 @@ input.pdf-input, input.remark-input, input.date-input, input.txt-input {
 .col-remarks, .col-pdf { min-width: 110px; }
 .col-subject { min-width: 140px; }
 
+/* feeds link grid */
+.link-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+.link-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid #e2e2da;
+  border-left: 3px solid #ff6600;
+  padding: 8px 10px;
+}
+.link-card:hover { background: #fff8f0; text-decoration: none; }
+.link-name { font-weight: bold; color: #000; font-size: 9pt; }
+
 .hidden { display: none; }
 
 footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
-/* ================= CONSISTENCY CALENDAR ================= */
+
 /* ================= CONSISTENCY CALENDAR & DASHBOARD ================= */
 .calendar-header {
   display: flex;
@@ -184,7 +202,7 @@ footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
   border: 1px solid #16a34a;
 }
 
-/* Instant Dashboard (Donut + Bars) */
+/* Instant Dashboard (Donut + Bars -> Turns GREEN) */
 .cal-dashboard {
   display: flex;
   align-items: center;
@@ -401,7 +419,7 @@ footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
   color: #b91c1c;
 }
 
-/* Future date (neutral, not harsh red yet) */
+/* Future date (neutral) */
 .slot-card.future {
   border-color: #d4d4d8;
   border-left-color: #9ca3af;
@@ -411,7 +429,7 @@ footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
 .slot-card.future .slot-card-badge { background: #6b7280; }
 .slot-card.future .slot-card-hint { color: #6b7280; }
 
-/* Done State -> Satisfying GREEN */
+/* Done State -> GREEN */
 .slot-card.done {
   border-color: #bbf7d0;
   border-left-color: #16a34a;
@@ -540,6 +558,7 @@ footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
   font-size: 28pt;
   cursor: pointer;
 }
+
 /* Deadline countdown badges */
 .deadline-badge {
   display: inline-block;
@@ -549,26 +568,22 @@ footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
   border-radius: 3px;
   white-space: nowrap;
 }
-
 .deadline-badge.future {
   background: #fff0e6;
   color: #ff6600;
   border: 1px solid #ffb380;
 }
-
 .deadline-badge.today {
   background: #ff6600;
   color: #fff;
   border: 1px solid #cc5200;
 }
-
 .deadline-badge.overdue {
   background: #ffe6e6;
   color: #cc0000;
   border: 1px solid #ff9999;
 }
 
-/* Row checkbox */
 .row-chk {
   transform: scale(1.15);
   cursor: pointer;
@@ -588,99 +603,7 @@ footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
   padding: 2px 6px;
   border: 1px solid #ccc;
 }
-/* ================= MISSION CONTROL HUD ================= */
-.mission-hud {
-  background: #1a1a1a;
-  color: #fff;
-  border-left: 4px solid #ff6600;
-  padding: 12px 14px;
-  margin: 10px 0 14px 0;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-.hud-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-.hud-tag {
-  font-size: 7pt;
-  letter-spacing: 1px;
-  color: #888;
-  font-family: monospace;
-}
-.hud-pace-badge {
-  font-size: 8pt;
-  font-weight: bold;
-  padding: 2px 7px;
-  border-radius: 2px;
-}
-.hud-pace-badge.ahead { background: #004d1a; color: #4dff88; border: 1px solid #009933; }
-.hud-pace-badge.ontrack { background: #332600; color: #ffcc00; border: 1px solid #806000; }
-.hud-pace-badge.behind { background: #4d0000; color: #ff6666; border: 1px solid #990000; }
 
-.hud-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 6px 0;
-}
-.hud-test-info { display: flex; align-items: baseline; gap: 10px; }
-.hud-day-test { font-size: 13pt; font-weight: bold; color: #fff; }
-.hud-subject { font-size: 10.5pt; color: #ff6600; }
-
-.hud-advance-btn {
-  background: #ff6600;
-  color: #fff;
-  border: none;
-  font-size: 9pt;
-  font-weight: bold;
-  padding: 7px 14px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.hud-advance-btn:hover { background: #e65c00; }
-
-.hud-deadline-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 8.5pt;
-  color: #bbb;
-  border-top: 1px solid #333;
-  padding-top: 6px;
-  margin-top: 6px;
-}
-
-.hud-punchline {
-  font-family: "Courier New", Courier, monospace;
-  font-size: 8.5pt;
-  color: #ff9944;
-  margin-top: 6px;
-  font-style: italic;
-}
-/* HUD Configuration Bar */
-.hud-config-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  background: #252525;
-  padding: 6px 10px;
-  margin-bottom: 8px;
-  font-size: 8.5pt;
-  color: #ddd;
-  border-left: 2px solid #ff6600;
-}
-.hud-config-bar input {
-  font-family: inherit;
-  font-size: 8.5pt;
-  background: #111;
-  color: #fff;
-  border: 1px solid #555;
-  padding: 2px 6px;
-}
 /* ================= HUD & INTENSITY ================= */
 .mission-hud {
   background: #181818;
@@ -759,20 +682,4 @@ footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
   padding: 2px;
   border: 1px solid #ccc;
   background: #fff;
-}
-/* ================= CALENDAR PROFILE SWITCHER ================= */
-.cal-title-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.cal-profile-select {
-  font-family: Verdana, Geneva, sans-serif;
-  font-size: 8.5pt;
-  padding: 2px 6px;
-  border: 1px solid #ff6600;
-  background: #fff;
-  color: #000;
-  cursor: pointer;
 }

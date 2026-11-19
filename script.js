@@ -3,17 +3,16 @@
 
   /* ============================================================
      FIREBASE CONFIGURATION
-     Paste your config from the Firebase Console here:
   ============================================================ */
   var firebaseConfig = {
     apiKey: "AIzaSyC5gWvr4ExNrNSKNJMrUAdO7XT6HeA6o70",
-  authDomain: "project-redemption-5c9bf.firebaseapp.com",
-  databaseURL: "https://project-redemption-5c9bf-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "project-redemption-5c9bf",
-  storageBucket: "project-redemption-5c9bf.firebasestorage.app",
-  messagingSenderId: "625257583514",
-  appId: "1:625257583514:web:79e368e9144f67222f6023",
-  measurementId: "G-5VZQS74XY2"
+    authDomain: "project-redemption-5c9bf.firebaseapp.com",
+    databaseURL: "https://project-redemption-5c9bf-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "project-redemption-5c9bf",
+    storageBucket: "project-redemption-5c9bf.firebasestorage.app",
+    messagingSenderId: "625257583514",
+    appId: "1:625257583514:web:79e368e9144f67222f6023",
+    measurementId: "G-5VZQS74XY2"
   };
 
   firebase.initializeApp(firebaseConfig);
@@ -34,7 +33,10 @@
     noise: [],
     c1: {},
     opt: {},
-    slots:{}
+    slots: {},
+    friendSlots: {},
+    calDocs: {},
+    friendCalDocs: {}
   };
 
   function escapeHtml(s) {
@@ -46,7 +48,6 @@
     return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   }
 
-  // Push updates to Firebase
   function syncToCloud() {
     appRef.set(state);
   }
@@ -68,6 +69,7 @@
     { t: "Consistency is a quieter form of talent.", a: "" },
     { t: "One more sectional test. One more day. That is the whole plan.", a: "" }
   ];
+
   function dayOfYear(d) {
     var start = new Date(d.getFullYear(), 0, 0);
     return Math.floor((d - start) / 86400000);
@@ -91,6 +93,7 @@
 
   function renderExams() {
     var ul = document.getElementById("examList");
+    if (!ul) return;
     ul.innerHTML = "";
     (state.exams || []).forEach(function (ex, idx) {
       var d = daysUntil(ex.date);
@@ -130,6 +133,7 @@
   function renderSimpleList(type, listElId) {
     var items = state[type] || [];
     var ul = document.getElementById(listElId);
+    if (!ul) return;
     ul.innerHTML = "";
     items.forEach(function (it, idx) {
       var li = document.createElement("li");
@@ -156,24 +160,24 @@
 
   document.getElementById("addDistractionForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var input = document.getElementById("distractionInput");
-    var val = input.value.trim();
+    var inputEl = document.getElementById("distractionInput");
+    var val = inputEl.value.trim();
     if (!val) return;
     if (!state.distractions) state.distractions = [];
     state.distractions.push({ text: val, done: false });
     syncToCloud();
-    input.value = "";
+    inputEl.value = "";
   });
 
   document.getElementById("addNoiseForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    var input = document.getElementById("noiseInput");
-    var val = input.value.trim();
+    var inputEl = document.getElementById("noiseInput");
+    var val = inputEl.value.trim();
     if (!val) return;
     if (!state.noise) state.noise = [];
     state.noise.push({ text: val, done: false });
     syncToCloud();
-    input.value = "";
+    inputEl.value = "";
   });
 
   /* ============================================================
@@ -184,8 +188,10 @@
     { id: "opt", label: "Optional (ME)", sectionId: "optSection" }
   ];
   var activeTop = "gs";
+
   function renderTopTabs() {
     var el = document.getElementById("topTabs");
+    if (!el) return;
     el.innerHTML = "";
     topTabs.forEach(function (t) {
       var btn = document.createElement("button");
@@ -205,7 +211,7 @@
   }
 
   /* ============================================================
-     GS MAINS - CYCLE 1
+     GS MAINS - CYCLE 1 & SUBJECT HUD
   ============================================================ */
   var subjects = {
     1: "Polity", 2: "Polity", 3: "Polity",
@@ -232,7 +238,7 @@
   function ensureC1(day) {
     if (!state.c1) state.c1 = {};
     if (!state.c1[day]) {
-      state.c1[day] = { date: "", status: "Not Started", pdf: "", cp: "", remarks: "" };
+      state.c1[day] = { date: "", status: "Not Started", pdf: "", cp: "", remarks: "", intensity: "⚡ Good Flow" };
     }
     return state.c1[day];
   }
@@ -241,16 +247,9 @@
     return "pdfs/c1/day" + dd + "-" + slug(subj) + ".pdf";
   }
 
- /* ============================================================
-     DEADLINE & COUNTDOWN CALCULATOR
-  ============================================================ */
   function getDeadlineBadge(startDateStr, dayOffset, isDone) {
-    // If ticked / done, the deadline completely disappears!
     if (isDone) return "";
-
-    if (!startDateStr) {
-      return '<span class="meta">Set start date</span>';
-    }
+    if (!startDateStr) return '<span class="meta">Set start date</span>';
 
     var start = new Date(startDateStr + "T00:00:00");
     var deadline = new Date(start);
@@ -272,67 +271,15 @@
     }
   }
 
-
-  /* ============================================================
-     MISSION CONTROL - 30-DAY PAPER BLOCK & PACE CALCULATOR
-  ============================================================ */
-  var PUNCHLINES = {
-    ahead: [
-      "Buffer secured. Don't relax—strike the iron while it's red hot.",
-      "Ahead of the clock. This is how top ranks create breathing room for revision.",
-      "Relentless momentum. Keep the knife sharp."
-    ],
-    ontrack: [
-      "Zero drama, pure execution. Exactly where you need to be.",
-      "1 test at a time. The 30-day block is bending to your routine.",
-      "Consistency is talent in disguise. Knock this one out today."
-    ],
-    behind: [
-      "Inertia is your only enemy. Stop planning, open the script and write.",
-      "The exam doesn't care about bad days. Squeeze out an average test—it still counts.",
-      "Behind pace. Cut the noise, sit in the chair, and get this test off your back today."
-    ]
-  };
-
-  /* ============================================================
-     MISSION CONTROL - ACCURATE DATE-BASED PACE TRACKER
-  ============================================================ */
-  var PUNCHLINES = {
-    ahead: [
-      "Buffer secured. Don't relax—crush the next script while momentum is on your side.",
-      "Ahead of the clock. This is how top ranks create breathing room for revision.",
-      "Relentless pace. Keep the pen moving."
-    ],
-    ontrack: [
-      "Zero drama, pure execution. Exactly on pace with your 30-day target.",
-      "1 test at a time. The syllabus bends to routine.",
-      "Consistency is talent in disguise. Knock this one out today."
-    ],
-    behind: [
-      "Inertia is your only real competitor. Stop overthinking, open the script.",
-      "You are in negative buffer. A mediocre test written today beats a perfect test postponed.",
-      "Behind the timeline. Cut the noise, sit in the chair, and clear this test today."
-    ],
-    overdue: [
-      "🚨 Block deadline has passed! You are in overtime. Finish remaining tests immediately.",
-      "Time's up for this block. Wrap up these answers and switch to the next paper."
-    ]
-  };
-
-  /* ============================================================
-     GS MAINS - CYCLE 1 & SUBJECT HUD
-  ============================================================ */
   function updateMissionHud(activeDay, activeTestNo, activeSubj, doneCount) {
     var hud = document.getElementById("missionHud");
     if (!hud) return;
 
-    // Load defaults if empty
     if (!state.subjectName) state.subjectName = "Ethics (GS-IV)";
-    if (!state.subjectStartDate) state.subjectStartDate = "2024-09-19";
+    if (!state.subjectStartDate) state.subjectStartDate = "2026-09-19";
     if (!state.blockDurationDays) state.blockDurationDays = 30;
-    if (!state.subjectTotalTests) state.subjectTotalTests = 4; // e.g., 4 tests for Ethics
+    if (!state.subjectTotalTests) state.subjectTotalTests = 4;
 
-    // Bind inputs
     var nameInput = document.getElementById("subjectName");
     var startInput = document.getElementById("subjectStartDate");
     var durationInput = document.getElementById("blockDurationDays");
@@ -351,7 +298,6 @@
     var totalSubjectTests = parseInt(state.subjectTotalTests, 10) || 4;
     var remainingInSubject = Math.max(0, totalSubjectTests - doneCount);
 
-    // If all tests for this subject are complete
     if (remainingInSubject === 0 || !activeDay) {
       document.getElementById("hudDayTest").textContent = "🎉 " + state.subjectName + " Done!";
       document.getElementById("hudTargetText").innerHTML = "All " + totalSubjectTests + " tests completed for this subject block.";
@@ -363,7 +309,6 @@
     document.getElementById("hudCompleteBtn").style.display = "block";
     document.getElementById("hudDayTest").textContent = "Day " + activeDay + " • Test " + activeTestNo + " (" + activeSubj + ")";
 
-    // Days math based on user start date
     var start = new Date(state.subjectStartDate + "T00:00:00");
     var duration = parseInt(state.blockDurationDays, 10) || 30;
     var deadlineDate = new Date(start);
@@ -375,16 +320,18 @@
     var daysLeftInBlock = Math.round((deadlineDate - today) / 86400000);
     var deadlineStr = deadlineDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
-    document.getElementById("hudBlockMeta").textContent = state.subjectName + " target end: " + deadlineStr + " (" + (daysLeftInBlock >= 0 ? daysLeftInBlock + " days left" : Math.abs(daysLeftInBlock) + " days overdue") + ")";
+    document.getElementById("hudBlockMeta").textContent =
+      state.subjectName + " target end: " + deadlineStr + " (" +
+      (daysLeftInBlock >= 0 ? daysLeftInBlock + " days left" : Math.abs(daysLeftInBlock) + " days overdue") + ")";
 
     if (daysLeftInBlock <= 0) {
       document.getElementById("hudTargetText").innerHTML = "🚨 <b>Overdue!</b> The " + duration + "-day block has ended. Knock this test out today!";
     } else {
       var daysPerTest = (daysLeftInBlock / remainingInSubject).toFixed(1);
-      document.getElementById("hudTargetText").innerHTML = "Complete 1 test per <b style='color:#ff6600; font-size:10pt;'>" + daysPerTest + " day(s)</b> from today (" + remainingInSubject + " tests left in this subject)";
+      document.getElementById("hudTargetText").innerHTML =
+        "Complete 1 test per <b style='color:#ff6600; font-size:10pt;'>" + daysPerTest + " day(s)</b> from today (" + remainingInSubject + " tests left in this subject)";
     }
 
-    // Button: Record Intensity & Move to Next Test
     document.getElementById("hudCompleteBtn").onclick = function () {
       var intensityVal = document.getElementById("hudIntensitySelect").value;
       var row = ensureC1(activeDay);
@@ -392,7 +339,7 @@
       row.intensity = intensityVal;
       row.date = new Date().toISOString().split("T")[0];
       syncToCloud();
-      renderC1(); // Rolls to next test immediately
+      renderC1();
     };
   }
 
@@ -431,7 +378,7 @@
       tr.appendChild(testTd);
       tr.appendChild(td(subj, "col-subject"));
 
-      // Intensity Column
+      // Intensity
       var tdIntensity = document.createElement("td");
       var selIntensity = document.createElement("select");
       selIntensity.className = "intensity-sel";
@@ -464,7 +411,7 @@
       tdDate.appendChild(inDate);
       tr.appendChild(tdDate);
 
-      // Status Dropdown
+      // Status
       var tdStatus = document.createElement("td");
       var sel = statusSelect(row.status, function (val) {
         ensureC1(day).status = val;
@@ -519,212 +466,6 @@
     updateMissionHud(firstIncompleteDay, firstIncompleteTestNo, firstIncompleteSubj, done);
   }
 
-  function renderC1() {
-    var body = document.getElementById("c1Body");
-    if (!body) return;
-    body.innerHTML = "";
-    var done = 0;
-
-    var firstIncompleteDay = null;
-    var firstIncompleteTestNo = null;
-    var firstIncompleteSubj = null;
-
-    priorityOrder.forEach(function (testNo, i) {
-      var day = i + 1;
-      var subj = subjects[testNo];
-      var row = ensureC1(day);
-      if (!row.pdf) row.pdf = defaultPdfPath(day, subj);
-
-      var isDone = (row.status === "Done");
-      if (isDone) {
-        done++;
-      } else if (!firstIncompleteDay) {
-        firstIncompleteDay = day;
-        firstIncompleteTestNo = testNo;
-        firstIncompleteSubj = subj;
-      }
-
-      var tr = document.createElement("tr");
-      tr.className = isDone ? "done" : "";
-
-      tr.appendChild(td(day, "day-num"));
-      var testTd = td("Test " + testNo);
-      testTd.style.color = "#828282";
-      tr.appendChild(testTd);
-      tr.appendChild(td(subj, "col-subject"));
-
-      var tdDate = document.createElement("td");
-      var inDate = input("date", row.date, "date-input");
-      inDate.addEventListener("change", function (e) {
-        ensureC1(day).date = e.target.value;
-        syncToCloud();
-        renderC1();
-      });
-      tdDate.appendChild(inDate);
-      tr.appendChild(tdDate);
-
-      var tdStatus = document.createElement("td");
-      var sel = statusSelect(row.status, function (val) {
-        ensureC1(day).status = val;
-        syncToCloud();
-        renderC1();
-      });
-      tdStatus.appendChild(sel);
-      tr.appendChild(tdStatus);
-
-      var tdPdf = document.createElement("td");
-      tdPdf.className = "col-pdf";
-      var inPdf = input("text", row.pdf, "pdf-input");
-      inPdf.addEventListener("change", function (e) {
-        ensureC1(day).pdf = e.target.value;
-        syncToCloud();
-      });
-      tdPdf.appendChild(inPdf);
-      tdPdf.appendChild(openLink(row.pdf));
-      tr.appendChild(tdPdf);
-
-      var tdCp = document.createElement("td");
-      tdCp.className = "col-remarks";
-      var inCp = input("text", row.cp, "remark-input");
-      inCp.addEventListener("change", function (e) {
-        ensureC1(day).cp = e.target.value;
-        syncToCloud();
-      });
-      tdCp.appendChild(inCp);
-      tr.appendChild(tdCp);
-
-      var tdRem = document.createElement("td");
-      tdRem.className = "col-remarks";
-      var inRem = input("text", row.remarks, "remark-input");
-      inRem.addEventListener("change", function (e) {
-        ensureC1(day).remarks = e.target.value;
-        syncToCloud();
-      });
-      tdRem.appendChild(inRem);
-      tr.appendChild(tdRem);
-
-      body.appendChild(tr);
-    });
-
-    var pct = Math.round((done / 30) * 100);
-    document.getElementById("progressFill").style.width = pct + "%";
-    document.getElementById("progressLabel").textContent = done + " / 30 done (" + pct + "%)";
-    renderPulse(pct);
-
-    updateMissionHud(firstIncompleteDay, firstIncompleteTestNo, firstIncompleteSubj, done);
-  }
-
-
-  /* ============================================================
-     OPTIONAL (ME) - (10 Days per Topic with Disappearing Deadline)
-  ============================================================ */
-  function renderOptTable(paperKey, list, bodyId) {
-    var body = document.getElementById(bodyId);
-    if (!body) return;
-    body.innerHTML = "";
-
-    var startKey = paperKey + "StartDate";
-    var datePicker = document.getElementById("optP1StartDate");
-    if (datePicker && paperKey === "paper1") {
-      if (!state[startKey]) {
-        state[startKey] = new Date().toISOString().split("T")[0];
-      }
-      datePicker.value = state[startKey];
-      datePicker.onchange = function () {
-        state[startKey] = this.value;
-        syncToCloud();
-        renderOptTable(paperKey, list, bodyId);
-      };
-    }
-
-    var accumulatedDays = 0;
-
-    list.forEach(function (item, idx) {
-      var row = ensureOpt(paperKey, idx);
-      if (!row.note) row.note = defaultOptPath(paperKey, idx, item.topic);
-      var isDone = (row.status === "Done");
-
-      var topicDays = parseInt(item.days, 10) || 10;
-      accumulatedDays += topicDays;
-
-      var tr = document.createElement("tr");
-      tr.className = isDone ? "done" : "";
-
-      // 1. Tick Checkbox
-      var tdChk = document.createElement("td");
-      var chk = document.createElement("input");
-      chk.type = "checkbox";
-      chk.className = "row-chk";
-      chk.checked = isDone;
-      chk.addEventListener("change", function () {
-        row.status = chk.checked ? "Done" : "Not Started";
-        if (chk.checked && !row.date) {
-          row.date = new Date().toISOString().split("T")[0];
-        }
-        syncToCloud();
-        renderOptTable(paperKey, list, bodyId);
-      });
-      tdChk.appendChild(chk);
-      tr.appendChild(tdChk);
-
-      // Topic & Details
-      tr.appendChild(td(item.topic, "col-subject"));
-      tr.appendChild(td(item.ref, "col-subject"));
-      tr.appendChild(td(item.approach));
-      tr.appendChild(td(item.days + " days"));
-
-      // 2. Deadline Badge (Calculates based on 10 days cumulative, disappears when done!)
-      var tdDeadline = document.createElement("td");
-      tdDeadline.innerHTML = getDeadlineBadge(state[startKey], accumulatedDays, isDone);
-      tr.appendChild(tdDeadline);
-
-      // Date Attempted
-      var tdDate = document.createElement("td");
-      var inDate = input("date", row.date, "date-input");
-      inDate.addEventListener("change", function (e) {
-        row.date = e.target.value;
-        syncToCloud();
-      });
-      tdDate.appendChild(inDate);
-      tr.appendChild(tdDate);
-
-      // Status
-      var tdStatus = document.createElement("td");
-      var sel = statusSelect(row.status, function (val) {
-        row.status = val;
-        syncToCloud();
-        renderOptTable(paperKey, list, bodyId);
-      });
-      tdStatus.appendChild(sel);
-      tr.appendChild(tdStatus);
-
-      // Notes / PDF
-      var tdNote = document.createElement("td");
-      tdNote.className = "col-pdf";
-      var inNote = input("text", row.note, "pdf-input");
-      inNote.addEventListener("change", function (e) {
-        row.note = e.target.value;
-        syncToCloud();
-      });
-      tdNote.appendChild(inNote);
-      tdNote.appendChild(openLink(row.note));
-      tr.appendChild(tdNote);
-
-      // Remarks
-      var tdRem = document.createElement("td");
-      tdRem.className = "col-remarks";
-      var inRem = input("text", row.remarks, "remark-input");
-      inRem.addEventListener("change", function (e) {
-        row.remarks = e.target.value;
-        syncToCloud();
-      });
-      tdRem.appendChild(inRem);
-      tr.appendChild(tdRem);
-
-      body.appendChild(tr);
-    });
-  }
-
   function renderPulse(pct) {
     var msg;
     if (pct === 0) msg = "Every rank holder started at zero. Day 1 counts the same as day 30.";
@@ -766,7 +507,109 @@
     return "pdfs/optional/" + paperKey + "/" + (idx + 1) + "-" + slug(topic) + ".pdf";
   }
 
+  function renderOptTable(paperKey, list, bodyId) {
+    var body = document.getElementById(bodyId);
+    if (!body) return;
+    body.innerHTML = "";
 
+    var startKey = paperKey + "StartDate";
+    var datePicker = document.getElementById("optP1StartDate");
+    if (datePicker && paperKey === "paper1") {
+      if (!state[startKey]) {
+        state[startKey] = new Date().toISOString().split("T")[0];
+      }
+      datePicker.value = state[startKey];
+      datePicker.onchange = function () {
+        state[startKey] = this.value;
+        syncToCloud();
+        renderOptTable(paperKey, list, bodyId);
+      };
+    }
+
+    var accumulatedDays = 0;
+
+    list.forEach(function (item, idx) {
+      var row = ensureOpt(paperKey, idx);
+      if (!row.note) row.note = defaultOptPath(paperKey, idx, item.topic);
+      var isDone = (row.status === "Done");
+
+      var topicDays = parseInt(item.days, 10) || 10;
+      accumulatedDays += topicDays;
+
+      var tr = document.createElement("tr");
+      tr.className = isDone ? "done" : "";
+
+      var tdChk = document.createElement("td");
+      var chk = document.createElement("input");
+      chk.type = "checkbox";
+      chk.className = "row-chk";
+      chk.checked = isDone;
+      chk.addEventListener("change", function () {
+        row.status = chk.checked ? "Done" : "Not Started";
+        if (chk.checked && !row.date) {
+          row.date = new Date().toISOString().split("T")[0];
+        }
+        syncToCloud();
+        renderOptTable(paperKey, list, bodyId);
+      });
+      tdChk.appendChild(chk);
+      tr.appendChild(tdChk);
+
+      tr.appendChild(td(item.topic, "col-subject"));
+      tr.appendChild(td(item.ref, "col-subject"));
+      tr.appendChild(td(item.approach));
+      tr.appendChild(td(item.days ? item.days + " days" : ""));
+
+      var tdDeadline = document.createElement("td");
+      tdDeadline.innerHTML = getDeadlineBadge(state[startKey], accumulatedDays, isDone);
+      tr.appendChild(tdDeadline);
+
+      var tdDate = document.createElement("td");
+      var inDate = input("date", row.date, "date-input");
+      inDate.addEventListener("change", function (e) {
+        row.date = e.target.value;
+        syncToCloud();
+      });
+      tdDate.appendChild(inDate);
+      tr.appendChild(tdDate);
+
+      var tdStatus = document.createElement("td");
+      var sel = statusSelect(row.status, function (val) {
+        row.status = val;
+        syncToCloud();
+        renderOptTable(paperKey, list, bodyId);
+      });
+      tdStatus.appendChild(sel);
+      tr.appendChild(tdStatus);
+
+      var tdNote = document.createElement("td");
+      tdNote.className = "col-pdf";
+      var inNote = input("text", row.note, "pdf-input");
+      inNote.addEventListener("change", function (e) {
+        row.note = e.target.value;
+        syncToCloud();
+      });
+      tdNote.appendChild(inNote);
+      tdNote.appendChild(openLink(row.note));
+      tr.appendChild(tdNote);
+
+      var tdRem = document.createElement("td");
+      tdRem.className = "col-remarks";
+      var inRem = input("text", row.remarks, "remark-input");
+      inRem.addEventListener("change", function (e) {
+        row.remarks = e.target.value;
+        syncToCloud();
+      });
+      tdRem.appendChild(inRem);
+      tr.appendChild(tdRem);
+
+      body.appendChild(tr);
+    });
+  }
+
+  /* ============================================================
+     DOM HELPERS
+  ============================================================ */
   function td(text, cls) {
     var el = document.createElement("td");
     el.textContent = text;
@@ -785,7 +628,8 @@
     sel.className = "status-sel";
     ["Not Started", "In Progress", "Done", "Skipped"].forEach(function (opt) {
       var o = document.createElement("option");
-      o.value = opt; o.textContent = opt;
+      o.value = opt;
+      o.textContent = opt;
       if (opt === current) o.selected = true;
       sel.appendChild(o);
     });
@@ -832,6 +676,13 @@
     }
   };
 
+  function toDateKey(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + day;
+  }
+
   var activeCalProfile = "me";
   try {
     var savedProfile = localStorage.getItem("cal_active_profile");
@@ -841,18 +692,11 @@
   } catch (e) {}
 
   var calViewDate = new Date();
-  var selectedDateStr = toDateKey(new Date()); // Opens Today automatically on load
+  var selectedDateStr = toDateKey(new Date());
   var noteSaveTimer = null;
 
   function getActiveProfile() {
     return CALENDAR_PROFILES[activeCalProfile] || CALENDAR_PROFILES.me;
-  }
-
-  function toDateKey(d) {
-    var y = d.getFullYear();
-    var m = String(d.getMonth() + 1).padStart(2, "0");
-    var day = String(d.getDate()).padStart(2, "0");
-    return y + "-" + m + "-" + day;
   }
 
   function countDoneSlots(slotArr, totalSlots) {
@@ -881,7 +725,6 @@
     var todayPct = Math.round((todayDone / totalSlots) * 100);
     var todayColor = getProgressColor(todayPct);
 
-    // Donut chart
     var donut = document.getElementById("todayDonut");
     var donutPct = document.getElementById("todayDonutPct");
     if (donut) {
@@ -892,7 +735,6 @@
       donutPct.style.color = todayColor;
     }
 
-    // Dashboard container mood (Red -> Amber -> Green)
     var dash = document.getElementById("calDashboard");
     if (dash) {
       dash.classList.remove("state-red", "state-amber", "state-green");
@@ -901,7 +743,6 @@
       else dash.classList.add("state-red");
     }
 
-    // Blunt status text
     var titleEl = document.getElementById("todayStatusTitle");
     var subEl = document.getElementById("todayStatusSub");
     var left = totalSlots - todayDone;
@@ -918,14 +759,12 @@
       }
     }
 
-    // Today progress bar
     var todayBar = document.getElementById("todayProgressBar");
     if (todayBar) {
       todayBar.style.width = todayPct + "%";
       todayBar.style.backgroundColor = todayColor;
     }
 
-    // Current month progress (up to today if current month, else full viewed month)
     var year = calViewDate.getFullYear();
     var month = calViewDate.getMonth();
     var daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1005,7 +844,6 @@
       numSpan.textContent = d;
       topRow.appendChild(numSpan);
 
-      // Tiny indicators if day has notes or images
       var docObj = profileDocs[key];
       if (docObj) {
         var icons = "";
@@ -1051,6 +889,7 @@
     var logger = document.getElementById("slotLogger");
     var label = document.getElementById("loggerDateLabel");
     var container = document.getElementById("slotPillsContainer");
+    if (!logger || !label || !container) return;
 
     logger.classList.remove("hidden");
     var todayKey = toDateKey(new Date());
@@ -1096,8 +935,9 @@
       container.appendChild(card);
     });
 
-    // Render Daily Note & Images
-    var docObj = (state[profile.docKey] && state[profile.docKey][dateStr]) ? state[profile.docKey][dateStr] : { note: "", images: [] };
+    var docObj = (state[profile.docKey] && state[profile.docKey][dateStr])
+      ? state[profile.docKey][dateStr]
+      : { note: "", images: [] };
     var noteInput = document.getElementById("docNoteInput");
     if (noteInput && (!isSyncRefresh || document.activeElement !== noteInput)) {
       noteInput.value = docObj.note || "";
@@ -1155,9 +995,8 @@
     });
   }
 
-  // Compress uploaded/pasted image so it fits cleanly in Firebase RTDB
   function compressAndAttachImage(file) {
-    if (!file || !file.type.startsWith("image/") || !selectedDateStr) return;
+    if (!file || !file.type || file.type.indexOf("image/") !== 0 || !selectedDateStr) return;
     var statusEl = document.getElementById("docSaveStatus");
     if (statusEl) statusEl.textContent = "Uploading image...";
 
@@ -1216,7 +1055,8 @@
         break;
       }
     }
-    document.getElementById("streakBadge").textContent = "🔥 " + streak + "-day streak";
+    var badge = document.getElementById("streakBadge");
+    if (badge) badge.textContent = "🔥 " + streak + "-day streak";
   }
 
   // Note typing (auto-saves after 600ms pause) + Ctrl+V image paste
@@ -1242,9 +1082,10 @@
     });
 
     docNoteInput.addEventListener("paste", function (e) {
-      var items = (e.clipboardData || window.clipboardData).items || [];
+      var cd = e.clipboardData || window.clipboardData;
+      var items = (cd && cd.items) ? cd.items : [];
       for (var i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf("image") !== -1) {
+        if (items[i].type && items[i].type.indexOf("image") !== -1) {
           compressAndAttachImage(items[i].getAsFile());
         }
       }
@@ -1302,15 +1143,26 @@
   });
 
   /* ============================================================
-     REALTIME SYNC LISTENER & LOCAL STORAGE MIGRATION
+     RENDER ALL & FIREBASE REALTIME SYNC
   ============================================================ */
+  function renderAll() {
+    renderQuote();
+    renderExams();
+    renderSimpleList("distractions", "distractionList");
+    renderSimpleList("noise", "noiseList");
+    renderTopTabs();
+    renderC1();
+    renderOptTable("paper1", optPaper1, "optP1Body");
+    renderOptTable("paper2", optPaper2, "optP2Body");
+    renderCalendar();
+  }
+
   appRef.on("value", function (snapshot) {
     var val = snapshot.val();
     if (val) {
       state = val;
       renderAll();
     } else {
-      // First run: migrate existing laptop localStorage into Firebase
       try {
         var oldExams = localStorage.getItem("upsc_tracker_exams_v2");
         var oldC1 = localStorage.getItem("upsc_tracker_c1_v2");
