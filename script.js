@@ -651,7 +651,7 @@
   ============================================================ */
   var CALENDAR_PROFILES = {
     me: {
-      name: "My Calendar",
+      name: "Heman",
       stateKey: "slots",
       docKey: "calDocs",
       slots: [
@@ -663,7 +663,7 @@
       ]
     },
     friend: {
-      name: "Friend's Calendar",
+      name: "Cute panda",
       stateKey: "friendSlots",
       docKey: "friendCalDocs",
       slots: [
