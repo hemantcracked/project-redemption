@@ -651,7 +651,7 @@
   ============================================================ */
   var CALENDAR_PROFILES = {
     me: {
-      name: "Heman",
+      name: "Heman 🐯",
       stateKey: "slots",
       docKey: "calDocs",
       slots: [
@@ -663,15 +663,13 @@
       ]
     },
     friend: {
-      name: "Cute panda",
+      name: "Ammulu 🐼",
       stateKey: "friendSlots",
       docKey: "friendCalDocs",
       slots: [
-        { id: 0, label: "Slot 1 (Morning)" },
-        { id: 1, label: "Slot 2 (Late Morning)" },
-        { id: 2, label: "Slot 3 (Afternoon)" },
-        { id: 3, label: "Slot 4 (Evening)" },
-        { id: 4, label: "Slot 5 (Night)" }
+        { id: 0, label: "6 AM slot : Workout" },
+        { id: 1, label: "8:30- 11:00 AM : Revise full stack" },
+        { id: 2, label: "9 PM : AI/ML Hands-on" },
       ]
     }
   };
