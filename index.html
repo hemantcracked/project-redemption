@@ -50,15 +50,16 @@
   </div>
   <!-- ================= CONSISTENCY CALENDAR ================= -->
   <div class="panel">
-    <div class="calendar-header">
-      <div class="panel-title" style="margin:0; border:none; padding:0;">Consistency Heatmap</div>
+    <<div class="calendar-header">
+      <div class="cal-title-group">
+        <div class="panel-title" style="margin:0; border:none; padding:0;">Consistency Heatmap</div>
+        <select id="calProfileSelect" class="cal-profile-select">
+          <option value="me">Heman</option>
+          <option value="friend">Cute panda</option>
+        </select>
+      </div>
       <div class="streak-badge" id="streakBadge">🔥 0-day streak</div>
     </div>
-    
-    <div class="cal-nav">
-      <button type="button" class="cal-nav-btn" id="prevMonthBtn">&lt; prev</button>
-      <span id="calMonthLabel" class="cal-month-label">May 2025</span>
-      <button type="button" class="cal-nav-btn" id="nextMonthBtn">next &gt;</button>
     </div>
 
     <!-- Calendar Grid -->

@@ -805,16 +805,48 @@
   /* ============================================================
      MINIMAL CONSISTENCY CALENDAR
   ============================================================ */
-  var DAILY_SLOTS = [
-    { id: 0, label: "5:30 GS Writing" },
-    { id: 1, label: "8:30 AI/ML" },
-    { id: 2, label: "2:00 Optional (ME)" },
-    { id: 3, label: "6:00 CSAT / DSA" },
-    { id: 4, label: "9:30 Project" }
-  ];
+  /* ============================================================
+     MINIMAL CONSISTENCY CALENDAR (MULTI-PROFILE)
+  ============================================================ */
+  var CALENDAR_PROFILES = {
+    me: {
+      name: "My Calendar",
+      stateKey: "slots", // keeps your existing Firebase data intact
+      slots: [
+        { id: 0, label: "5:30 GS Writing" },
+        { id: 1, label: "8:30 AI/ML" },
+        { id: 2, label: "2:00 Optional (ME)" },
+        { id: 3, label: "6:00 CSAT / DSA" },
+        { id: 4, label: "9:30 Project" }
+      ]
+    },
+    friend: {
+      name: "Friend's Calendar", // rename this to her name if you'd like
+      stateKey: "friendSlots",
+      slots: [
+        { id: 0, label: "Slot 1 (Morning)" },
+        { id: 1, label: "Slot 2 (Late Morning)" },
+        { id: 2, label: "Slot 3 (Afternoon)" },
+        { id: 3, label: "Slot 4 (Evening)" },
+        { id: 4, label: "Slot 5 (Night)" }
+      ]
+    }
+  };
+
+  var activeCalProfile = "me";
+  try {
+    var savedProfile = localStorage.getItem("cal_active_profile");
+    if (savedProfile && CALENDAR_PROFILES[savedProfile]) {
+      activeCalProfile = savedProfile;
+    }
+  } catch (e) {}
 
   var calViewDate = new Date();
   var selectedDateStr = null;
+
+  function getActiveProfile() {
+    return CALENDAR_PROFILES[activeCalProfile] || CALENDAR_PROFILES.me;
+  }
 
   function toDateKey(d) {
     var y = d.getFullYear();
@@ -827,6 +859,10 @@
     var grid = document.getElementById("calGrid");
     if (!grid) return;
     grid.innerHTML = "";
+
+    var profile = getActiveProfile();
+    var profileSelect = document.getElementById("calProfileSelect");
+    if (profileSelect) profileSelect.value = activeCalProfile;
 
     var year = calViewDate.getFullYear();
     var month = calViewDate.getMonth();
@@ -853,16 +889,21 @@
       grid.appendChild(emptyCell);
     }
 
-    if (!state.slots) state.slots = {};
+    if (!state[profile.stateKey]) state[profile.stateKey] = {};
+    var profileSlots = state[profile.stateKey];
 
     for (var d = 1; d <= totalDays; d++) {
       var currentCellDate = new Date(year, month, d);
       var key = toDateKey(currentCellDate);
-      var slotData = state.slots[key] || [0, 0, 0, 0, 0];
-      var doneCount = slotData.reduce(function (a, b) { return a + (b ? 1 : 0); }, 0);
+      var slotData = profileSlots[key] || [0, 0, 0, 0, 0];
+
+      var doneCount = 0;
+      for (var c = 0; c < profile.slots.length; c++) {
+        if (slotData[c]) doneCount++;
+      }
 
       var cell = document.createElement("div");
-      cell.className = "cal-cell heat-" + doneCount + (key === todayKey ? " today" : "");
+      cell.className = "cal-cell heat-" + Math.min(doneCount, 5) + (key === todayKey ? " today" : "");
       cell.dataset.date = key;
 
       var numSpan = document.createElement("span");
@@ -870,17 +911,17 @@
       numSpan.textContent = d;
       cell.appendChild(numSpan);
 
-      // Micro dots for 5 slots
+      // Micro dots for slots
       var dotsDiv = document.createElement("div");
       dotsDiv.className = "cal-dots";
-      for (var s = 0; s < 5; s++) {
+      for (var s = 0; s < profile.slots.length; s++) {
         var dot = document.createElement("span");
         dot.className = "cal-dot" + (slotData[s] ? " active" : "");
         dotsDiv.appendChild(dot);
       }
       cell.appendChild(dotsDiv);
 
-      cell.addEventListener("click", function (evt) {
+      cell.addEventListener("click", function () {
         openSlotLogger(this.dataset.date);
       });
 
@@ -888,31 +929,43 @@
     }
 
     calculateStreak();
+
+    // Refresh open logger if a date is currently selected
+    var logger = document.getElementById("slotLogger");
+    if (logger && !logger.classList.contains("hidden") && selectedDateStr) {
+      openSlotLogger(selectedDateStr);
+    }
   }
 
   function openSlotLogger(dateStr) {
     selectedDateStr = dateStr;
+    var profile = getActiveProfile();
     var logger = document.getElementById("slotLogger");
     var label = document.getElementById("loggerDateLabel");
     var container = document.getElementById("slotPillsContainer");
 
     logger.classList.remove("hidden");
-    label.textContent = "Slots completed on: " + dateStr;
+    label.textContent = profile.name + " — Slots on " + dateStr;
     container.innerHTML = "";
 
-    var slotData = (state.slots && state.slots[dateStr]) ? state.slots[dateStr] : [0, 0, 0, 0, 0];
+    var profileSlots = state[profile.stateKey] || {};
+    var slotData = profileSlots[dateStr] || [0, 0, 0, 0, 0];
 
-    DAILY_SLOTS.forEach(function (slot, i) {
+    profile.slots.forEach(function (slot, i) {
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "slot-pill" + (slotData[i] ? " done" : "");
       btn.textContent = (slotData[i] ? "✓ " : "+ ") + slot.label;
 
       btn.addEventListener("click", function () {
-        if (!state.slots) state.slots = {};
-        if (!state.slots[dateStr]) state.slots[dateStr] = [0, 0, 0, 0, 0];
-        state.slots[dateStr][i] = state.slots[dateStr][i] ? 0 : 1;
-        syncToCloud();
+        if (!state[profile.stateKey]) state[profile.stateKey] = {};
+        if (!state[profile.stateKey][dateStr]) {
+          state[profile.stateKey][dateStr] = profile.slots.map(function () { return 0; });
+        }
+        state[profile.stateKey][dateStr][i] = state[profile.stateKey][dateStr][i] ? 0 : 1;
+
+        // Targeted Firebase write so you and your friend never overwrite each other
+        appRef.child(profile.stateKey).child(dateStr).set(state[profile.stateKey][dateStr]);
         openSlotLogger(dateStr);
       });
       container.appendChild(btn);
@@ -920,23 +973,27 @@
   }
 
   function calculateStreak() {
+    var profile = getActiveProfile();
+    var profileSlots = state[profile.stateKey] || {};
     var streak = 0;
     var checkDate = new Date();
-    
-    // If today has at least 1 slot logged, start checking from today, else yesterday
-    var todayKey = toDateKey(checkDate);
-    var todaySlots = (state.slots && state.slots[todayKey]) ? state.slots[todayKey] : [];
-    var todayDone = todaySlots.some(function (v) { return v === 1; });
 
-    if (!todayDone) {
+    function hasAnySlotDone(slots) {
+      if (!slots) return false;
+      for (var i = 0; i < profile.slots.length; i++) {
+        if (slots[i]) return true;
+      }
+      return false;
+    }
+
+    var todayKey = toDateKey(checkDate);
+    if (!hasAnySlotDone(profileSlots[todayKey])) {
       checkDate.setDate(checkDate.getDate() - 1);
     }
 
     while (true) {
       var k = toDateKey(checkDate);
-      var slots = (state.slots && state.slots[k]) ? state.slots[k] : [];
-      var hasDone = slots.some(function (v) { return v === 1; });
-      if (hasDone) {
+      if (hasAnySlotDone(profileSlots[k])) {
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
       } else {
@@ -946,7 +1003,15 @@
     document.getElementById("streakBadge").textContent = "🔥 " + streak + "-day streak";
   }
 
-  // Calendar Navigation Listeners
+  // Calendar Navigation & Profile Switcher Listeners
+  var calProfileSelect = document.getElementById("calProfileSelect");
+  if (calProfileSelect) {
+    calProfileSelect.addEventListener("change", function () {
+      activeCalProfile = this.value;
+      try { localStorage.setItem("cal_active_profile", activeCalProfile); } catch (e) {}
+      renderCalendar();
+    });
+  }
   document.getElementById("prevMonthBtn").addEventListener("click", function () {
     calViewDate.setMonth(calViewDate.getMonth() - 1);
     renderCalendar();
@@ -956,19 +1021,9 @@
     renderCalendar();
   });
   document.getElementById("closeLoggerBtn").addEventListener("click", function () {
+    selectedDateStr = null;
     document.getElementById("slotLogger").classList.add("hidden");
   });
-  function renderAll() {
-    renderQuote();
-    renderExams();
-    renderSimpleList("distractions", "distractionList");
-    renderSimpleList("noise", "noiseList");
-    renderTopTabs();
-    renderC1();
-    renderOptTable("paper1", optPaper1, "optP1Body");
-    renderOptTable("paper2", optPaper2, "optP2Body");
-    renderCalendar();
-  }
 
   /* ============================================================
      REALTIME SYNC LISTENER & LOCAL STORAGE MIGRATION

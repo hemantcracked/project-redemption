@@ -489,3 +489,19 @@ footer { color: #828282; font-size: 8pt; text-align: center; margin-top: 30px; }
   border: 1px solid #ccc;
   background: #fff;
 }
+/* ================= CALENDAR PROFILE SWITCHER ================= */
+.cal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cal-profile-select {
+  font-family: Verdana, Geneva, sans-serif;
+  font-size: 8.5pt;
+  padding: 2px 6px;
+  border: 1px solid #ff6600;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+}
