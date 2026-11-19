@@ -49,17 +49,88 @@
     </table>
   </div>
   <!-- ================= CONSISTENCY CALENDAR ================= -->
+ <!-- ================= CONSISTENCY CALENDAR ================= -->
   <div class="panel">
-    <<div class="calendar-header">
+    <div class="calendar-header">
       <div class="cal-title-group">
         <div class="panel-title" style="margin:0; border:none; padding:0;">Consistency Heatmap</div>
         <select id="calProfileSelect" class="cal-profile-select">
-          <option value="me">Heman</option>
-          <option value="friend">Cute panda</option>
+          <option value="me">My Calendar</option>
+          <option value="friend">Friend's Calendar</option>
         </select>
       </div>
       <div class="streak-badge" id="streakBadge">🔥 0-day streak</div>
     </div>
+
+    <!-- Instant Visual Dashboard (Donut + Progress Bars -> Turns GREEN) -->
+    <div class="cal-dashboard" id="calDashboard">
+      <div class="donut-wrap">
+        <div class="donut-chart" id="todayDonut">
+          <div class="donut-hole">
+            <span id="todayDonutPct">0%</span>
+            <small>TODAY</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-stats">
+        <div class="dash-status-title" id="todayStatusTitle">0 / 5 done today</div>
+        <div class="dash-status-sub" id="todayStatusSub">Nothing marked yet. Start now.</div>
+
+        <div class="dash-bar-row">
+          <span class="dash-bar-label">Today</span>
+          <div class="dash-bar-track"><div class="dash-bar-fill" id="todayProgressBar"></div></div>
+        </div>
+
+        <div class="dash-bar-row">
+          <span class="dash-bar-label" id="monthProgressLabel">Month (0%)</span>
+          <div class="dash-bar-track"><div class="dash-bar-fill" id="monthProgressBar"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cal-nav">
+      <button type="button" class="cal-nav-btn" id="prevMonthBtn">&lt; prev</button>
+      <span id="calMonthLabel" class="cal-month-label">Month</span>
+      <button type="button" class="cal-nav-btn" id="nextMonthBtn">next &gt;</button>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="cal-grid" id="calGrid"></div>
+
+    <!-- Daily Slots + Document (Notes & Images) -->
+    <div id="slotLogger" class="slot-logger hidden">
+      <div class="logger-header">
+        <span id="loggerDateLabel" style="font-weight:bold;">Logging for Date</span>
+        <button type="button" id="closeLoggerBtn" class="close-btn">&times;</button>
+      </div>
+
+      <!-- High-impact Slot Cards -->
+      <div class="slot-cards" id="slotPillsContainer"></div>
+
+      <!-- Daily Document: Notes + Image Upload -->
+      <div class="daily-doc">
+        <div class="doc-toolbar">
+          <span class="doc-title">Daily Note &amp; Attachments</span>
+          <div class="doc-toolbar-right">
+            <span id="docSaveStatus" class="doc-save-status">Saved</span>
+            <label for="docImageInput" class="doc-upload-btn">+ Add Image</label>
+            <input type="file" id="docImageInput" accept="image/*" multiple class="hidden">
+          </div>
+        </div>
+
+        <textarea id="docNoteInput" class="doc-textarea" rows="4" placeholder="Write your daily reflections, mistakes, wins, or paste screenshots (Ctrl+V)..."></textarea>
+
+        <div id="docImageGrid" class="doc-image-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Image Preview Lightbox -->
+  <div id="imgLightbox" class="img-lightbox hidden">
+    <button type="button" id="imgLightboxClose" class="lightbox-close">&times;</button>
+    <img id="imgLightboxSrc" src="" alt="Attachment preview">
+  </div>
     </div>
 
     <!-- Calendar Grid -->

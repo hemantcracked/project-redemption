@@ -803,15 +803,13 @@
   }
 
   /* ============================================================
-     MINIMAL CONSISTENCY CALENDAR
-  ============================================================ */
-  /* ============================================================
-     MINIMAL CONSISTENCY CALENDAR (MULTI-PROFILE)
+     CONSISTENCY CALENDAR + DASHBOARD + DAILY DOC (NOTES & IMAGES)
   ============================================================ */
   var CALENDAR_PROFILES = {
     me: {
       name: "My Calendar",
-      stateKey: "slots", // keeps your existing Firebase data intact
+      stateKey: "slots",
+      docKey: "calDocs",
       slots: [
         { id: 0, label: "5:30 GS Writing" },
         { id: 1, label: "8:30 AI/ML" },
@@ -821,8 +819,9 @@
       ]
     },
     friend: {
-      name: "Friend's Calendar", // rename this to her name if you'd like
+      name: "Friend's Calendar",
       stateKey: "friendSlots",
+      docKey: "friendCalDocs",
       slots: [
         { id: 0, label: "Slot 1 (Morning)" },
         { id: 1, label: "Slot 2 (Late Morning)" },
@@ -842,7 +841,8 @@
   } catch (e) {}
 
   var calViewDate = new Date();
-  var selectedDateStr = null;
+  var selectedDateStr = toDateKey(new Date()); // Opens Today automatically on load
+  var noteSaveTimer = null;
 
   function getActiveProfile() {
     return CALENDAR_PROFILES[activeCalProfile] || CALENDAR_PROFILES.me;
@@ -853,6 +853,100 @@
     var m = String(d.getMonth() + 1).padStart(2, "0");
     var day = String(d.getDate()).padStart(2, "0");
     return y + "-" + m + "-" + day;
+  }
+
+  function countDoneSlots(slotArr, totalSlots) {
+    if (!slotArr) return 0;
+    var count = 0;
+    for (var i = 0; i < totalSlots; i++) {
+      if (slotArr[i]) count++;
+    }
+    return count;
+  }
+
+  function getProgressColor(pct) {
+    if (pct >= 80) return "#16a34a"; // Vivid Green
+    if (pct >= 40) return "#ea580c"; // Amber / Orange
+    return "#dc2626";                // Urgent Red
+  }
+
+  function renderDashboard() {
+    var profile = getActiveProfile();
+    var totalSlots = profile.slots.length;
+    var profileSlots = (state && state[profile.stateKey]) ? state[profile.stateKey] : {};
+
+    var today = new Date();
+    var todayKey = toDateKey(today);
+    var todayDone = countDoneSlots(profileSlots[todayKey], totalSlots);
+    var todayPct = Math.round((todayDone / totalSlots) * 100);
+    var todayColor = getProgressColor(todayPct);
+
+    // Donut chart
+    var donut = document.getElementById("todayDonut");
+    var donutPct = document.getElementById("todayDonutPct");
+    if (donut) {
+      donut.style.background = "conic-gradient(" + todayColor + " " + todayPct + "%, #e5e7eb " + todayPct + "% 100%)";
+    }
+    if (donutPct) {
+      donutPct.textContent = todayPct + "%";
+      donutPct.style.color = todayColor;
+    }
+
+    // Dashboard container mood (Red -> Amber -> Green)
+    var dash = document.getElementById("calDashboard");
+    if (dash) {
+      dash.classList.remove("state-red", "state-amber", "state-green");
+      if (todayPct >= 80) dash.classList.add("state-green");
+      else if (todayPct >= 40) dash.classList.add("state-amber");
+      else dash.classList.add("state-red");
+    }
+
+    // Blunt status text
+    var titleEl = document.getElementById("todayStatusTitle");
+    var subEl = document.getElementById("todayStatusSub");
+    var left = totalSlots - todayDone;
+    if (titleEl) {
+      titleEl.textContent = profile.name + ": " + todayDone + " / " + totalSlots + " slots done today";
+    }
+    if (subEl) {
+      if (todayDone === 0) {
+        subEl.textContent = "0% done. Red zone — knock out your first slot right now.";
+      } else if (todayDone < totalSlots) {
+        subEl.textContent = left + " slot" + (left > 1 ? "s" : "") + " still unmarked. Push it to green.";
+      } else {
+        subEl.textContent = "100% LOCKED IN. Full green day achieved!";
+      }
+    }
+
+    // Today progress bar
+    var todayBar = document.getElementById("todayProgressBar");
+    if (todayBar) {
+      todayBar.style.width = todayPct + "%";
+      todayBar.style.backgroundColor = todayColor;
+    }
+
+    // Current month progress (up to today if current month, else full viewed month)
+    var year = calViewDate.getFullYear();
+    var month = calViewDate.getMonth();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var isCurrentMonth = (year === today.getFullYear() && month === today.getMonth());
+    var denomDays = isCurrentMonth ? today.getDate() : daysInMonth;
+
+    var monthDone = 0;
+    for (var d = 1; d <= daysInMonth; d++) {
+      var k = toDateKey(new Date(year, month, d));
+      monthDone += countDoneSlots(profileSlots[k], totalSlots);
+    }
+    var monthTarget = denomDays * totalSlots;
+    var monthPct = monthTarget > 0 ? Math.min(100, Math.round((monthDone / monthTarget) * 100)) : 0;
+
+    var monthLabel = document.getElementById("monthProgressLabel");
+    var monthBar = document.getElementById("monthProgressBar");
+    if (monthLabel) monthLabel.textContent = "Month (" + monthPct + "%)";
+    if (monthBar) {
+      monthBar.style.width = monthPct + "%";
+      monthBar.style.backgroundColor = getProgressColor(monthPct);
+    }
   }
 
   function renderCalendar() {
@@ -869,7 +963,6 @@
     var monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
     document.getElementById("calMonthLabel").textContent = monthNames[month] + " " + year;
 
-    // Day headers (Mon - Sun)
     var dayHeaders = ["M", "T", "W", "T", "F", "S", "S"];
     dayHeaders.forEach(function (dh) {
       var h = document.createElement("div");
@@ -878,11 +971,10 @@
       grid.appendChild(h);
     });
 
-    var firstDayIdx = (new Date(year, month, 1).getDay() + 6) % 7; // Monday = 0
+    var firstDayIdx = (new Date(year, month, 1).getDay() + 6) % 7;
     var totalDays = new Date(year, month + 1, 0).getDate();
     var todayKey = toDateKey(new Date());
 
-    // Empty lead cells
     for (var e = 0; e < firstDayIdx; e++) {
       var emptyCell = document.createElement("div");
       emptyCell.className = "cal-cell empty";
@@ -890,28 +982,44 @@
     }
 
     if (!state[profile.stateKey]) state[profile.stateKey] = {};
+    if (!state[profile.docKey]) state[profile.docKey] = {};
     var profileSlots = state[profile.stateKey];
+    var profileDocs = state[profile.docKey];
 
     for (var d = 1; d <= totalDays; d++) {
-      var currentCellDate = new Date(year, month, d);
-      var key = toDateKey(currentCellDate);
-      var slotData = profileSlots[key] || [0, 0, 0, 0, 0];
-
-      var doneCount = 0;
-      for (var c = 0; c < profile.slots.length; c++) {
-        if (slotData[c]) doneCount++;
-      }
+      var key = toDateKey(new Date(year, month, d));
+      var slotData = profileSlots[key] || [];
+      var doneCount = countDoneSlots(slotData, profile.slots.length);
 
       var cell = document.createElement("div");
-      cell.className = "cal-cell heat-" + Math.min(doneCount, 5) + (key === todayKey ? " today" : "");
+      cell.className = "cal-cell heat-" + Math.min(doneCount, 5) +
+        (key === todayKey ? " today" : "") +
+        (key === selectedDateStr ? " selected" : "");
       cell.dataset.date = key;
+
+      var topRow = document.createElement("div");
+      topRow.className = "cal-cell-top";
 
       var numSpan = document.createElement("span");
       numSpan.className = "cal-num";
       numSpan.textContent = d;
-      cell.appendChild(numSpan);
+      topRow.appendChild(numSpan);
 
-      // Micro dots for slots
+      // Tiny indicators if day has notes or images
+      var docObj = profileDocs[key];
+      if (docObj) {
+        var icons = "";
+        if (docObj.note && docObj.note.trim()) icons += "📝";
+        if (docObj.images && docObj.images.length) icons += "📷";
+        if (icons) {
+          var iconSpan = document.createElement("span");
+          iconSpan.className = "cal-doc-icons";
+          iconSpan.textContent = icons;
+          topRow.appendChild(iconSpan);
+        }
+      }
+      cell.appendChild(topRow);
+
       var dotsDiv = document.createElement("div");
       dotsDiv.className = "cal-dots";
       for (var s = 0; s < profile.slots.length; s++) {
@@ -922,22 +1030,22 @@
       cell.appendChild(dotsDiv);
 
       cell.addEventListener("click", function () {
-        openSlotLogger(this.dataset.date);
+        openSlotLogger(this.dataset.date, false);
+        renderCalendar();
       });
 
       grid.appendChild(cell);
     }
 
+    renderDashboard();
     calculateStreak();
 
-    // Refresh open logger if a date is currently selected
-    var logger = document.getElementById("slotLogger");
-    if (logger && !logger.classList.contains("hidden") && selectedDateStr) {
-      openSlotLogger(selectedDateStr);
+    if (selectedDateStr) {
+      openSlotLogger(selectedDateStr, true);
     }
   }
 
-  function openSlotLogger(dateStr) {
+  function openSlotLogger(dateStr, isSyncRefresh) {
     selectedDateStr = dateStr;
     var profile = getActiveProfile();
     var logger = document.getElementById("slotLogger");
@@ -945,31 +1053,147 @@
     var container = document.getElementById("slotPillsContainer");
 
     logger.classList.remove("hidden");
-    label.textContent = profile.name + " — Slots on " + dateStr;
+    var todayKey = toDateKey(new Date());
+    var dayTag = (dateStr === todayKey) ? " (TODAY)" : (dateStr < todayKey ? " (PAST)" : " (UPCOMING)");
+    label.textContent = profile.name + " — " + dateStr + dayTag;
     container.innerHTML = "";
 
     var profileSlots = state[profile.stateKey] || {};
-    var slotData = profileSlots[dateStr] || [0, 0, 0, 0, 0];
+    var slotData = profileSlots[dateStr] || [];
 
     profile.slots.forEach(function (slot, i) {
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "slot-pill" + (slotData[i] ? " done" : "");
-      btn.textContent = (slotData[i] ? "✓ " : "+ ") + slot.label;
+      var isDone = !!slotData[i];
+      var isPast = dateStr < todayKey;
+      var isFuture = dateStr > todayKey;
 
-      btn.addEventListener("click", function () {
+      var card = document.createElement("button");
+      card.type = "button";
+      card.className = "slot-card" + (isDone ? " done" : (isFuture ? " future" : ""));
+
+      var badgeText = isDone ? "✓ DONE" : (isPast ? "✕ MISSED" : (isFuture ? "UPCOMING" : "⚠ NOT DONE"));
+      var hintText = isDone
+        ? "Completed — click to undo"
+        : (isPast ? "Left unmarked on this day" : (isFuture ? "Scheduled slot" : "Unmarked! Click when done"));
+
+      card.innerHTML =
+        '<div class="slot-card-top">' +
+          '<span class="slot-card-name">' + escapeHtml(slot.label) + '</span>' +
+          '<span class="slot-card-badge">' + badgeText + '</span>' +
+        '</div>' +
+        '<div class="slot-card-hint">' + hintText + '</div>';
+
+      card.addEventListener("click", function () {
         if (!state[profile.stateKey]) state[profile.stateKey] = {};
         if (!state[profile.stateKey][dateStr]) {
           state[profile.stateKey][dateStr] = profile.slots.map(function () { return 0; });
         }
         state[profile.stateKey][dateStr][i] = state[profile.stateKey][dateStr][i] ? 0 : 1;
 
-        // Targeted Firebase write so you and your friend never overwrite each other
         appRef.child(profile.stateKey).child(dateStr).set(state[profile.stateKey][dateStr]);
-        openSlotLogger(dateStr);
+        renderCalendar();
       });
-      container.appendChild(btn);
+
+      container.appendChild(card);
     });
+
+    // Render Daily Note & Images
+    var docObj = (state[profile.docKey] && state[profile.docKey][dateStr]) ? state[profile.docKey][dateStr] : { note: "", images: [] };
+    var noteInput = document.getElementById("docNoteInput");
+    if (noteInput && (!isSyncRefresh || document.activeElement !== noteInput)) {
+      noteInput.value = docObj.note || "";
+    }
+    renderDocImages(dateStr, Array.isArray(docObj.images) ? docObj.images : []);
+  }
+
+  function saveDocToCloud(dateStr) {
+    var profile = getActiveProfile();
+    if (!state[profile.docKey]) state[profile.docKey] = {};
+    var docObj = state[profile.docKey][dateStr] || { note: "", images: [] };
+    var statusEl = document.getElementById("docSaveStatus");
+    if (statusEl) statusEl.textContent = "Saving...";
+
+    appRef.child(profile.docKey).child(dateStr).set(docObj, function (err) {
+      if (statusEl) statusEl.textContent = err ? "Error saving" : "Saved ✓";
+    });
+  }
+
+  function renderDocImages(dateStr, images) {
+    var grid = document.getElementById("docImageGrid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    images.forEach(function (src, idx) {
+      var wrap = document.createElement("div");
+      wrap.className = "doc-img-item";
+
+      var img = document.createElement("img");
+      img.src = src;
+      img.alt = "Note attachment";
+      img.addEventListener("click", function () {
+        document.getElementById("imgLightboxSrc").src = src;
+        document.getElementById("imgLightbox").classList.remove("hidden");
+      });
+
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "doc-img-del";
+      delBtn.title = "Remove image";
+      delBtn.textContent = "×";
+      delBtn.addEventListener("click", function () {
+        var profile = getActiveProfile();
+        if (!state[profile.docKey] || !state[profile.docKey][dateStr]) return;
+        var arr = state[profile.docKey][dateStr].images || [];
+        arr.splice(idx, 1);
+        state[profile.docKey][dateStr].images = arr;
+        saveDocToCloud(dateStr);
+        renderCalendar();
+      });
+
+      wrap.appendChild(img);
+      wrap.appendChild(delBtn);
+      grid.appendChild(wrap);
+    });
+  }
+
+  // Compress uploaded/pasted image so it fits cleanly in Firebase RTDB
+  function compressAndAttachImage(file) {
+    if (!file || !file.type.startsWith("image/") || !selectedDateStr) return;
+    var statusEl = document.getElementById("docSaveStatus");
+    if (statusEl) statusEl.textContent = "Uploading image...";
+
+    var reader = new FileReader();
+    reader.onload = function (evt) {
+      var img = new Image();
+      img.onload = function () {
+        var maxDim = 900;
+        var w = img.width;
+        var h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * (maxDim / w)); w = maxDim; }
+          else { w = Math.round(w * (maxDim / h)); h = maxDim; }
+        }
+        var canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+
+        var profile = getActiveProfile();
+        if (!state[profile.docKey]) state[profile.docKey] = {};
+        if (!state[profile.docKey][selectedDateStr]) {
+          state[profile.docKey][selectedDateStr] = { note: "", images: [] };
+        }
+        if (!Array.isArray(state[profile.docKey][selectedDateStr].images)) {
+          state[profile.docKey][selectedDateStr].images = [];
+        }
+        state[profile.docKey][selectedDateStr].images.push(dataUrl);
+        saveDocToCloud(selectedDateStr);
+        renderCalendar();
+      };
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
   }
 
   function calculateStreak() {
@@ -978,22 +1202,14 @@
     var streak = 0;
     var checkDate = new Date();
 
-    function hasAnySlotDone(slots) {
-      if (!slots) return false;
-      for (var i = 0; i < profile.slots.length; i++) {
-        if (slots[i]) return true;
-      }
-      return false;
-    }
-
     var todayKey = toDateKey(checkDate);
-    if (!hasAnySlotDone(profileSlots[todayKey])) {
+    if (countDoneSlots(profileSlots[todayKey], profile.slots.length) === 0) {
       checkDate.setDate(checkDate.getDate() - 1);
     }
 
     while (true) {
       var k = toDateKey(checkDate);
-      if (hasAnySlotDone(profileSlots[k])) {
+      if (countDoneSlots(profileSlots[k], profile.slots.length) > 0) {
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
       } else {
@@ -1003,12 +1219,71 @@
     document.getElementById("streakBadge").textContent = "🔥 " + streak + "-day streak";
   }
 
+  // Note typing (auto-saves after 600ms pause) + Ctrl+V image paste
+  var docNoteInput = document.getElementById("docNoteInput");
+  if (docNoteInput) {
+    docNoteInput.addEventListener("input", function () {
+      if (!selectedDateStr) return;
+      var profile = getActiveProfile();
+      if (!state[profile.docKey]) state[profile.docKey] = {};
+      if (!state[profile.docKey][selectedDateStr]) {
+        state[profile.docKey][selectedDateStr] = { note: "", images: [] };
+      }
+      state[profile.docKey][selectedDateStr].note = this.value;
+
+      var statusEl = document.getElementById("docSaveStatus");
+      if (statusEl) statusEl.textContent = "Typing...";
+
+      clearTimeout(noteSaveTimer);
+      var targetDate = selectedDateStr;
+      noteSaveTimer = setTimeout(function () {
+        saveDocToCloud(targetDate);
+      }, 600);
+    });
+
+    docNoteInput.addEventListener("paste", function (e) {
+      var items = (e.clipboardData || window.clipboardData).items || [];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          compressAndAttachImage(items[i].getAsFile());
+        }
+      }
+    });
+  }
+
+  var docImageInput = document.getElementById("docImageInput");
+  if (docImageInput) {
+    docImageInput.addEventListener("change", function () {
+      var files = this.files;
+      for (var i = 0; i < files.length; i++) {
+        compressAndAttachImage(files[i]);
+      }
+      this.value = "";
+    });
+  }
+
+  // Lightbox close
+  var imgLightbox = document.getElementById("imgLightbox");
+  var imgLightboxClose = document.getElementById("imgLightboxClose");
+  if (imgLightboxClose) {
+    imgLightboxClose.addEventListener("click", function () {
+      imgLightbox.classList.add("hidden");
+    });
+  }
+  if (imgLightbox) {
+    imgLightbox.addEventListener("click", function (e) {
+      if (e.target === imgLightbox) imgLightbox.classList.add("hidden");
+    });
+  }
+
   // Calendar Navigation & Profile Switcher Listeners
   var calProfileSelect = document.getElementById("calProfileSelect");
   if (calProfileSelect) {
     calProfileSelect.addEventListener("change", function () {
       activeCalProfile = this.value;
       try { localStorage.setItem("cal_active_profile", activeCalProfile); } catch (e) {}
+      if (!selectedDateStr) selectedDateStr = toDateKey(new Date());
+      openSlotLogger(selectedDateStr, false);
       renderCalendar();
     });
   }
@@ -1023,6 +1298,7 @@
   document.getElementById("closeLoggerBtn").addEventListener("click", function () {
     selectedDateStr = null;
     document.getElementById("slotLogger").classList.add("hidden");
+    renderCalendar();
   });
 
   /* ============================================================
