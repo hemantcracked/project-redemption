@@ -17,7 +17,29 @@
 
   firebase.initializeApp(firebaseConfig);
   var db = firebase.database();
-  var appRef = db.ref("tracker_data");
+  var rawRef = db.ref("tracker_data");
+
+  /* Only these two Google accounts (Hemanth and Srilek) may use the tracker.
+     Database rules enforce this on the server; this client check keeps any
+     other account from even starting the normal read/write path. */
+  var ALLOWED_UIDS = [
+    "VZ2DDx3uN5OJq4MxuCbw0yQ6zG52",   // hemant.cracked@gmail.com
+    "3wIkWEO4vWSdPLQTnfAEFB5tL0I3"    // srilekhatirumalasetti77@gmail.com
+  ];
+
+  /* Writes stay blocked until an approved account is signed in AND the first read of
+     the tracker data has succeeded. */
+  var canWrite = false;
+  function guardRef(ref) {
+    return {
+      child: function (k) { return guardRef(ref.child(k)); },
+      set: function (v, cb) {
+        if (!canWrite) { if (cb) cb(new Error("write blocked: not signed in or not loaded")); return; }
+        return ref.set(v, cb);
+      }
+    };
+  }
+  var appRef = guardRef(rawRef);
 
   /* ============================================================
      DEFAULTS & HELPERS
@@ -1155,8 +1177,10 @@
     renderCalendar();
   }
 
-  appRef.on("value", function (snapshot) {
+  function startSync() {
+  rawRef.on("value", function (snapshot) {
     var val = snapshot.val();
+    canWrite = true;
     if (val) {
       state = val;
       renderAll();
@@ -1168,6 +1192,7 @@
         var oldDist = localStorage.getItem("upsc_tracker_distractions_v1");
         var oldNoise = localStorage.getItem("upsc_tracker_noise_v1");
 
+        var migrated = !!(oldExams || oldC1 || oldOpt || oldDist || oldNoise);
         if (oldExams) state.exams = JSON.parse(oldExams);
         if (oldC1) state.c1 = JSON.parse(oldC1);
         if (oldOpt) state.opt = JSON.parse(oldOpt);
@@ -1175,8 +1200,68 @@
         if (oldNoise) state.noise = JSON.parse(oldNoise);
       } catch (err) {}
 
-      syncToCloud();
+      /* Empty database: only write if old local data was migrated. */
+      if (migrated) syncToCloud();
       renderAll();
+    }
+  }, function (err) {
+    canWrite = false;
+    showGate("Could not load the tracker. Sign in with an approved Google account.");
+  });
+  }
+
+  /* ============================================================
+     GOOGLE SIGN-IN GATE
+     Database rules only allow the owner's Google account.
+  ============================================================ */
+  var gate = null;
+  function showGate(msg) {
+    if (!gate) {
+      gate = document.createElement("div");
+      gate.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:#f6f6ef;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:Verdana,Geneva,sans-serif;font-size:10pt;text-align:center;padding:20px";
+      var p = document.createElement("div");
+      p.id = "gateMsg";
+      p.style.marginBottom = "12px";
+      var btn = document.createElement("button");
+      btn.textContent = "Sign in with Google";
+      btn.style.cssText = "background:#ff6600;color:#000;border:1px solid #000;padding:6px 14px;font-weight:bold;cursor:pointer;font-family:inherit";
+      btn.onclick = function () {
+        var provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithPopup(provider).catch(function (e) {
+          if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) {
+            firebase.auth().signInWithRedirect(provider);
+          } else {
+            document.getElementById("gateMsg").textContent = "Sign-in failed. Try again.";
+          }
+        });
+      };
+      gate.appendChild(p);
+      gate.appendChild(btn);
+      document.body.appendChild(gate);
+    }
+    document.getElementById("gateMsg").textContent = msg;
+    gate.style.display = "flex";
+  }
+
+  var syncStarted = false;
+  var rejectedMsg = null;
+  firebase.auth().getRedirectResult().catch(function () {
+    showGate("Sign-in failed. Try again.");
+  });
+  firebase.auth().onAuthStateChanged(function (user) {
+    if (user && ALLOWED_UIDS.indexOf(user.uid) !== -1) {
+      if (gate) gate.style.display = "none";
+      if (!syncStarted) { syncStarted = true; startSync(); }
+    } else {
+      canWrite = false;
+      if (syncStarted) { rawRef.off(); syncStarted = false; }
+      if (user) {
+        rejectedMsg = "That Google account does not have access to this tracker. Sign in with an approved account.";
+        showGate(rejectedMsg);
+        firebase.auth().signOut();
+      } else {
+        showGate(rejectedMsg || "Sign in to open your tracker.");
+      }
     }
   });
 
